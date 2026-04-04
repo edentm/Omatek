@@ -222,23 +222,23 @@ export default function Reports() {
               </div>
 
               {/* Footer Buttons */}
-              <div className="absolute bottom-0 left-0 right-0 px-6 pb-8 bg-white">
-                <div className="flex gap-4 justify-center">
+              <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white border-t-2 border-[#eaecf0]">
+                <div className="flex gap-4 justify-center items-center">
                   {/* Edit Button */}
                   <button className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2">
                     <svg className="size-6" viewBox="0 0 24 24" fill="none">
                       <path clipRule="evenodd" d={svgPaths.p3d4e8980} fill="#667085" fillRule="evenodd" />
                     </svg>
-                    <span className="font-['Figtree:Bold',sans-serif] font-bold text-[16px] text-black">Edit</span>
+                    <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
                   </button>
                   {/* Sign Off Button */}
-                  <button className="h-[53px] px-4 w-[217px] bg-black rounded-[10px] flex items-center justify-center gap-2">
+                  <button className="h-[53px] px-4 w-[217px] bg-[#027a48] rounded-[10px] flex items-center justify-center gap-2">
                     <div className="flex items-center justify-center size-6">
                       <svg className="size-4" viewBox="0 0 20 15" fill="none">
                         <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
                       </svg>
                     </div>
-                    <span className="font-['Figtree:Bold',sans-serif] font-bold text-[16px] text-white text-center">Sign Off On Report</span>
+                    <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white text-center">Sign Off On Report</span>
                   </button>
                 </div>
               </div>
