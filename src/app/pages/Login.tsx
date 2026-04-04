@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export default function Login() {
             <img 
               alt="Omatek Logo" 
               className="absolute h-[352.94%] left-[-53.81%] max-w-none top-[-130%] w-[207.61%]" 
-              src="/logo.png"
+              src={imgUntitledDesign41} 
             />
           </div>
         </div>
