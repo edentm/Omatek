@@ -1,6 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
 import { Home, Brain, FileText, Files, Users, Settings, LogOut, ChevronDown } from "lucide-react";
-import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -18,10 +17,10 @@ export default function DashboardLayout() {
           <div className="h-[77px] relative shrink-0 border-[#eaecf0] border-b-[0.8px] border-solid">
             <div className="absolute h-[59px] left-[20px] top-[8px] w-[108px]">
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <img 
-                  alt="Omatek Logo" 
-                  className="absolute h-[340%] left-[-41.03%] max-w-none top-[-117.06%] w-[185.26%]" 
-                  src={imgUntitledDesign41} 
+                <img
+                  alt="Omatek Logo"
+                  className="absolute h-[340%] left-[-41.03%] max-w-none top-[-117.06%] w-[185.26%]"
+                  src="/logo.png"
                 />
               </div>
             </div>
