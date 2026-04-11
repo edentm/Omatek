@@ -4,6 +4,7 @@ import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const getConfidencePill = (confidence: string) => {
     const value = parseInt(confidence);
@@ -57,6 +58,8 @@ export default function Reports() {
           <input
             type="text"
             placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[44px] px-4 pl-10 border border-[#d0d5dd] rounded-lg text-[14px]"
           />
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" fill="none" viewBox="0 0 20 20">
@@ -116,7 +119,11 @@ export default function Reports() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {mockReports.map((report, index) => (
+            {mockReports.filter(report =>
+              [report.title, report.status].some(field =>
+                field.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+            ).map((report, index) => (
               <tr 
                 key={index} 
                 className="hover:bg-gray-50 cursor-pointer"

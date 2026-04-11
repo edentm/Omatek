@@ -1,4 +1,8 @@
+import { useState } from "react";
+
 export default function Documents() {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const mockDocuments = [
     { title: "Q1 Financial Report 2026", type: "PDF", uploadDate: "03/31/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
     { title: "Annual Budget Proposal", type: "Excel", uploadDate: "03/28/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
@@ -6,7 +10,6 @@ export default function Documents() {
     { title: "Tax Compliance Documents",  type: "PDF", uploadDate: "03/30/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
     { title: "Revenue Analysis Report", type: "Excel", uploadDate: "03/27/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
     { title: "Cash Flow Statement", type: "PDF", uploadDate: "03/26/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
-   ,
   ];
 
   return (
@@ -43,6 +46,8 @@ export default function Documents() {
           <input
             type="text"
             placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[44px] px-4 pl-10 border border-[#d0d5dd] rounded-lg text-[14px]"
           />
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" fill="none" viewBox="0 0 20 20">
@@ -88,7 +93,11 @@ export default function Documents() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {mockDocuments.map((doc, index) => (
+            {mockDocuments.filter(doc =>
+              [doc.title, doc.type, doc.uploadedBy].some(field =>
+                field.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+            ).map((doc, index) => (
               <tr key={index} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
