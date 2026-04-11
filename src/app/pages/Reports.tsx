@@ -229,7 +229,13 @@ export default function Reports() {
                     <span>Date Generated: {selectedReport.date}</span>
                     <span>Type: {selectedReport.type}</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[12px] text-[#52565c]">AI Confidence:</span>
+                    {(() => { const p = getConfidencePill(selectedReport.aiConfidence); return (
+                      <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
+                        {p.label}
+                      </span>
+                    ); })()}
                     <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Bold',sans-serif] font-bold ${
                       selectedReport.status === "Finalized"
                         ? "bg-[#ecfdf3] text-[#027a48]"
@@ -265,13 +271,13 @@ export default function Reports() {
                       <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
                     </button>
                     {/* Sign Off Button */}
-                    <button className="h-[53px] px-4 w-[217px] bg-[#027a48] rounded-[10px] flex items-center justify-center gap-2">
+                    <button className="h-[53px] px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2">
                       <div className="flex items-center justify-center size-6">
                         <svg className="size-4" viewBox="0 0 20 15" fill="none">
                           <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
                         </svg>
                       </div>
-                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white text-center">Sign Off On Report</span>
+                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white text-center">Finalize Report</span>
                     </button>
                   </div>
                 </div>
