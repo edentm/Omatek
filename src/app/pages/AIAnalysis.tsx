@@ -38,6 +38,14 @@ export default function AIAnalysis() {
     },
   ];
 
+  const getConfidencePill = (confidence: string) => {
+    const value = parseInt(confidence);
+    if (value >= 90) return { label: `${confidence} - Very High`, classes: "bg-[#ecfdf3] text-[#027a48]" };
+    if (value >= 80) return { label: `${confidence} - High`, classes: "bg-[#e8f0fe] text-[#1a56db]" };
+    if (value >= 60) return { label: `${confidence} - Moderate`, classes: "bg-[#fef0c7] text-[#dc6803]" };
+    return { label: `${confidence} - Low`, classes: "bg-[#fef3f2] text-[#b42318]" };
+  };
+
   const mockIngestionData = [
     {
       name: "Q1 Financial Report 2026",
@@ -232,7 +240,11 @@ export default function AIAnalysis() {
                       {issue.type}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-[14px] text-gray-600">{issue.aiConfidence}</div>
+                      {(() => { const p = getConfidencePill(issue.aiConfidence); return (
+                        <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
+                          {p.label}
+                        </span>
+                      ); })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <button className="text-gray-400 hover:text-gray-600">
