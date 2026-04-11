@@ -167,25 +167,19 @@ export default function AIAnalysis() {
           {/* Filters */}
           <div className="flex gap-2 mb-6">
             <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-              Filter
+              Issue Level
               <svg className="size-4" fill="none" viewBox="0 0 16 16">
                 <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
             <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-              Filter
+              Date
               <svg className="size-4" fill="none" viewBox="0 0 16 16">
                 <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
             <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-              Filter
-              <svg className="size-4" fill="none" viewBox="0 0 16 16">
-                <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-              Filter
+              AI Confidence
               <svg className="size-4" fill="none" viewBox="0 0 16 16">
                 <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

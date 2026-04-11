@@ -5,14 +5,22 @@ export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
 
+  const getConfidencePill = (confidence: string) => {
+    const value = parseInt(confidence);
+    if (value >= 90) return { label: `${confidence} - Very High`, classes: "bg-[#ecfdf3] text-[#027a48]" };
+    if (value >= 80) return { label: `${confidence} - High`, classes: "bg-[#e8f0fe] text-[#1a56db]" };
+    if (value >= 60) return { label: `${confidence} - Moderate`, classes: "bg-[#fef0c7] text-[#dc6803]" };
+    return { label: `${confidence} - Low`, classes: "bg-[#fef3f2] text-[#b42318]" };
+  };
+
   const mockReports = [
-    { title: "Q1 2026 Financial Summary", id: "FR-0001-2026", type: "Quarterly Report", category: "Financial Overview", date: "03/31/2026", status: "Approved" },
-    { title: "Annual Budget Forecast", id: "FR-0002-2026", type: "Budget Analysis", category: "Financial Planning", date: "03/28/2026", status: "Needs Review" },
-    { title: "Expense Reconciliation Report", id: "FR-0003-2026", type: "Expense Report", category: "Accounting", date: "03/25/2026", status: "Approved" },
-    { title: "Revenue Analysis - March", id: "FR-0004-2026", type: "Revenue Report", category: "Financial Analysis", date: "03/30/2026", status: "Needs Review" },
-    { title: "Cash Flow Statement", id: "FR-0005-2026", type: "Financial Statement", category: "Treasury", date: "03/27/2026", status: "Approved" },
-    { title: "Tax Compliance Review", id: "FR-0006-2026", type: "Compliance Report", category: "Tax & Legal", date: "03/26/2026", status: "Needs Review" },
-    { title: "Profit & Loss Statement", id: "FR-0007-2026", type: "Financial Statement", category: "Accounting", date: "03/29/2026", status: "Approved" },
+    { title: "Q1 2026 Financial Summary", id: "FR-0001-2026", type: "Quarterly Report", category: "Financial Overview", date: "03/31/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "95%" },
+    { title: "Annual Budget Forecast", id: "FR-0002-2026", type: "Budget Analysis", category: "Financial Planning", date: "03/28/2026", status: "Needs Approval", aiConfidence: "87%" },
+    { title: "Expense Reconciliation Report", id: "FR-0003-2026", type: "Expense Report", category: "Accounting", date: "03/25/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "92%" },
+    { title: "Revenue Analysis - March", id: "FR-0004-2026", type: "Revenue Report", category: "Financial Analysis", date: "03/30/2026", status: "Needs Approval", aiConfidence: "78%" },
+    { title: "Cash Flow Statement", id: "FR-0005-2026", type: "Financial Statement", category: "Treasury", date: "03/27/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "98%" },
+    { title: "Tax Compliance Review", id: "FR-0006-2026", type: "Compliance Report", category: "Tax & Legal", date: "03/26/2026", status: "Needs Approval", aiConfidence: "83%" },
+    { title: "Profit & Loss Statement", id: "FR-0007-2026", type: "Financial Statement", category: "Accounting", date: "03/29/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "91%" },
   ];
 
   return (
@@ -60,25 +68,25 @@ export default function Reports() {
       {/* Filters */}
       <div className="flex gap-2 mb-6">
         <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Filter
+          Status
           <svg className="size-4" fill="none" viewBox="0 0 16 16">
             <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
         <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Filter
+          Date Created
           <svg className="size-4" fill="none" viewBox="0 0 16 16">
             <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
         <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Filter
+          Date Finalized
           <svg className="size-4" fill="none" viewBox="0 0 16 16">
             <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
         <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Filter
+          Initial AI Confidence
           <svg className="size-4" fill="none" viewBox="0 0 16 16">
             <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -100,12 +108,11 @@ export default function Reports() {
                 Date Created
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Type
+                Date Finalized
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Category
+                Initial AI Confidence
               </th>
-              <th className="px-6 py-3"></th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -122,30 +129,25 @@ export default function Reports() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
-                    report.status === "Approved" 
-                      ? "bg-[#ecfdf3] text-[#027a48]" 
+                    report.status === "Finalized"
+                      ? "bg-[#ecfdf3] text-[#027a48]"
                       : "bg-[#e8f0fe] text-[#1a56db]"
                   }`}>
-                    {report.status}
+                    {report.status === "Finalized" ? "Finalized" : "Needs Approval"}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
                   {report.date}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                  {report.type}
+                  {report.finalizedDate ?? "—"}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-[14px] text-gray-600">{report.category}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                      <path d="M10 10.8333C10.4602 10.8333 10.8333 10.4602 10.8333 10C10.8333 9.53976 10.4602 9.16667 10 9.16667C9.53976 9.16667 9.16667 9.53976 9.16667 10C9.16667 10.4602 9.53976 10.8333 10 10.8333Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M10 5C10.4602 5 10.8333 4.62691 10.8333 4.16667C10.8333 3.70643 10.4602 3.33333 10 3.33333C9.53976 3.33333 9.16667 3.70643 9.16667 4.16667C9.16667 4.62691 9.53976 5 10 5Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M10 16.6667C10.4602 16.6667 10.8333 16.2936 10.8333 15.8333C10.8333 15.3731 10.4602 15 10 15C9.53976 15 9.16667 15.3731 9.16667 15.8333C9.16667 16.2936 9.53976 16.6667 10 16.6667Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
+                  {(() => { const p = getConfidencePill(report.aiConfidence); return (
+                    <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
+                      {p.label}
+                    </span>
+                  ); })()}
                 </td>
               </tr>
             ))}
@@ -220,13 +222,20 @@ export default function Reports() {
                     <span>Date Generated: {selectedReport.date}</span>
                     <span>Type: {selectedReport.type}</span>
                   </div>
-                  <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Bold',sans-serif] font-bold ${
-                    selectedReport.status === "Approved" 
-                      ? "bg-[#ecfdf3] text-[#027a48]" 
-                      : "bg-[#e8f0fe] text-[#1a56db]"
-                  }`}>
-                    {selectedReport.status === "Approved" ? "Approved" : "Needs Approval"}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Bold',sans-serif] font-bold ${
+                      selectedReport.status === "Finalized"
+                        ? "bg-[#ecfdf3] text-[#027a48]"
+                        : "bg-[#e8f0fe] text-[#1a56db]"
+                    }`}>
+                      {selectedReport.status === "Finalized" ? "Finalized" : "Needs Approval"}
+                    </span>
+                    {selectedReport.status === "Finalized" && selectedReport.finalizedDate && (
+                      <span className="text-[12px] text-[#027a48]">
+                        Date Finalized: {selectedReport.finalizedDate}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Lorem ipsum content */}
@@ -237,27 +246,29 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* Footer Buttons */}
-              <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white border-t-2 border-[#eaecf0]">
-                <div className="flex gap-4 justify-center items-center">
-                  {/* Edit Button */}
-                  <button className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2">
-                    <svg className="size-6" viewBox="0 0 24 24" fill="none">
-                      <path clipRule="evenodd" d={svgPaths.p3d4e8980} fill="#667085" fillRule="evenodd" />
-                    </svg>
-                    <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
-                  </button>
-                  {/* Sign Off Button */}
-                  <button className="h-[53px] px-4 w-[217px] bg-[#027a48] rounded-[10px] flex items-center justify-center gap-2">
-                    <div className="flex items-center justify-center size-6">
-                      <svg className="size-4" viewBox="0 0 20 15" fill="none">
-                        <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+              {/* Footer Buttons — hidden for approved reports */}
+              {selectedReport.status !== "Finalized" && (
+                <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white border-t-2 border-[#eaecf0]">
+                  <div className="flex gap-4 justify-center items-center">
+                    {/* Edit Button */}
+                    <button className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2">
+                      <svg className="size-6" viewBox="0 0 24 24" fill="none">
+                        <path clipRule="evenodd" d={svgPaths.p3d4e8980} fill="#667085" fillRule="evenodd" />
                       </svg>
-                    </div>
-                    <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white text-center">Sign Off On Report</span>
-                  </button>
+                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
+                    </button>
+                    {/* Sign Off Button */}
+                    <button className="h-[53px] px-4 w-[217px] bg-[#027a48] rounded-[10px] flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center size-6">
+                        <svg className="size-4" viewBox="0 0 20 15" fill="none">
+                          <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+                        </svg>
+                      </div>
+                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white text-center">Sign Off On Report</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
