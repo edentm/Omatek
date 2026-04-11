@@ -4,6 +4,7 @@ import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+  const [isFullWidth, setIsFullWidth] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const getConfidencePill = (confidence: string) => {
@@ -166,7 +167,7 @@ export default function Reports() {
       {selectedReport && (
         <div 
           className={`fixed top-0 right-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
-            isPanelExpanded ? 'w-[500px]' : 'w-0'
+            isPanelExpanded ? (isFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]') : 'w-0'
           }`}
           style={{ zIndex: 1000 }}
         >
@@ -176,13 +177,24 @@ export default function Reports() {
               <div className="h-[68.8px] border-b border-[#eaecf0] px-6 flex items-center justify-between">
                 <div className="flex gap-3">
                   {/* Double chevron expand/collapse button */}
-                  <button 
+                  <button
+                    onClick={() => setIsFullWidth(!isFullWidth)}
                     className="size-5 text-[#667085] hover:text-gray-800"
                   >
                     <svg className="size-full" fill="none" viewBox="0 0 20 20">
-                      {/* Double chevron left */}
-                      <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                      <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                      {isFullWidth ? (
+                        <>
+                          {/* Double chevron right — collapse */}
+                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
+                        </>
+                      ) : (
+                        <>
+                          {/* Double chevron left — expand */}
+                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                        </>
+                      )}
                     </svg>
                   </button>
                   {/* Download button */}
@@ -193,8 +205,8 @@ export default function Reports() {
                   </button>
                 </div>
                 {/* Close button */}
-                <button 
-                  onClick={() => setSelectedReport(null)}
+                <button
+                  onClick={() => { setSelectedReport(null); setIsFullWidth(false); }}
                   className="size-5 text-[#667085] hover:text-gray-800"
                 >
                   <svg className="size-full" fill="none" viewBox="0 0 20 20">
@@ -204,27 +216,15 @@ export default function Reports() {
               </div>
 
               {/* Content */}
-              <div 
-                className="flex-1 overflow-y-auto px-6 pt-6 pb-24" 
-                style={{ 
-                  scrollbarWidth: 'none', 
-                  msOverflowStyle: 'none',
-                }}
+              <div
+                className="flex-1 overflow-y-auto px-6 pt-6 pb-24"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
-                <style>
-                  {`
-                    .flex-1::-webkit-scrollbar {
-                      display: none;
-                    }
-                  `}
-                </style>
                 {/* Report Title and Status */}
                 <div className="mb-6">
-                  <div className="flex items-start justify-between mb-2">
-                    <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black">
-                      {selectedReport.title}
-                    </h2>
-                  </div>
+                  <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black mb-2">
+                    {selectedReport.title}
+                  </h2>
                   <div className="flex gap-2 text-[12px] text-[#52565c] mb-3">
                     <span>Date Generated: {selectedReport.date}</span>
                     <span>Type: {selectedReport.type}</span>
@@ -245,7 +245,7 @@ export default function Reports() {
                   </div>
                 </div>
 
-                {/* Lorem ipsum content */}
+                {/* Body content */}
                 <div className="text-[14px] text-[#475467] space-y-4 leading-[22.75px]">
                   <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
                   <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.</p>
