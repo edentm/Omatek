@@ -22,14 +22,6 @@ export default function Login() {
           </div>
         </div>
         
-        <button
-          onClick={() => navigate("/signup")}
-          className="absolute bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] right-[32px] rounded-[10px] top-[46px] w-[177px]"
-        >
-          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[21px] text-[#344054] text-[14px] text-center">
-            Create an Account
-          </p>
-        </button>
       </div>
 
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[589px]">
