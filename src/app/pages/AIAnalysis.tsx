@@ -102,22 +102,22 @@ export default function AIAnalysis() {
       <div className="flex justify-between items-start mb-8">
         <div className="flex flex-col gap-[8px]">
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
-            Document Intelligence
+            AI Analysis
           </h1>
-          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">Upload and Analyze Documents, flag issues</p>
+          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">Extract key findings from uploaded documents with AI</p>
         </div>
 
-        <button className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[53px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors">
-          <svg className="size-6" fill="none" viewBox="0 0 24 24">
-            <path 
-              d="M12 5V19M5 12H19" 
-              stroke="#344054" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
+        <button className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors">
+          <svg className="size-5" fill="none" viewBox="0 0 20 20">
+            <path
+              d="M10 4.16667V15.8333M4.16667 10H15.8333"
+              stroke="#344054"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </svg>
-          <p className="font-['Figtree:Bold',sans-serif] text-[16px] text-[#344054] whitespace-nowrap">
+          <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
             Upload & Analyze Documents
           </p>
         </button>
@@ -214,7 +214,7 @@ export default function AIAnalysis() {
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
                         {issue.title}
                       </div>
-                      <div className="text-[12px] text-gray-500">{issue.id}</div>
+                      
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${

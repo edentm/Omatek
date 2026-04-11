@@ -17,13 +17,30 @@ export default function Reports() {
 
   return (
     <div className="bg-white h-full w-full p-8 relative">
-      <div className="flex flex-col gap-[8px] mb-6">
-        <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
-          Reports
-        </h1>
-        <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">
-          Instructions on report viewing and generation
-        </p>
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex flex-col gap-[8px]">
+          <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
+            Reports
+          </h1>
+          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">
+            Instructions on report viewing and generation
+          </p>
+        </div>
+
+        <button className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors">
+          <svg className="size-5" fill="none" viewBox="0 0 20 20">
+            <path
+              d="M10 4.16667V15.8333M4.16667 10H15.8333"
+              stroke="#344054"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
+            Generate Report
+          </p>
+        </button>
       </div>
 
       {/* Search */}
