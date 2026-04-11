@@ -278,7 +278,6 @@ export default function AIAnalysis() {
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
                         {item.name}
                       </div>
-                      <div className="text-[12px] text-gray-500">{item.id}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
                       {item.numberOfDocs}

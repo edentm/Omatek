@@ -102,7 +102,6 @@ export default function Reports() {
                   <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
                     {report.title}
                   </div>
-                  <div className="text-[12px] text-gray-500">{report.id}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${

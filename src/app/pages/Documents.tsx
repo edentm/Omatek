@@ -106,7 +106,6 @@ export default function Documents() {
                   <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
                     {doc.title}
                   </div>
-                  <div className="text-[12px] text-gray-500">{doc.id}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
                   {doc.type}
