@@ -1,12 +1,7 @@
 export default function Users() {
   const mockUsers = [
-    { name: "Sarah Johnson", position: "Chief Financial Officer", email: "sarah.johnson@company.com" },
-    { name: "Michael Chen", position: "Senior Financial Analyst", email: "michael.chen@company.com" },
-    { name: "Emily Rodriguez", position: "Accounting Manager", email: "emily.rodriguez@company.com" },
-    { name: "David Thompson", position: "Budget Director", email: "david.thompson@company.com" },
-    { name: "Lisa Anderson", position: "Tax Compliance Specialist", email: "lisa.anderson@company.com" },
-    { name: "James Wilson", position: "Financial Controller", email: "james.wilson@company.com" },
-    { name: "Maria Garcia", position: "Revenue Analyst", email: "maria.garcia@company.com" },
+    { name: "Oladosu Teyibo", position: "Administrator", email: "oladosu.teyibo@company.com" },
+  
   ];
 
   return (

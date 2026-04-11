@@ -1,12 +1,12 @@
 export default function Documents() {
   const mockDocuments = [
-    { title: "Q1 Financial Report 2026", id: "DOC-0001", type: "PDF", uploadDate: "03/31/2026", uploadedBy: "Sarah Johnson", uploadedByRole: "Chief Financial Officer" },
-    { title: "Annual Budget Proposal", id: "DOC-0002", type: "Excel", uploadDate: "03/28/2026", uploadedBy: "David Thompson", uploadedByRole: "Budget Director" },
-    { title: "Expense Report - March", id: "DOC-0003", type: "PDF", uploadDate: "03/25/2026", uploadedBy: "Emily Rodriguez", uploadedByRole: "Accounting Manager" },
-    { title: "Tax Compliance Documents", id: "DOC-0004", type: "PDF", uploadDate: "03/30/2026", uploadedBy: "Lisa Anderson", uploadedByRole: "Tax Compliance Specialist" },
-    { title: "Revenue Analysis Report", id: "DOC-0005", type: "Excel", uploadDate: "03/27/2026", uploadedBy: "Maria Garcia", uploadedByRole: "Revenue Analyst" },
-    { title: "Cash Flow Statement", id: "DOC-0006", type: "PDF", uploadDate: "03/26/2026", uploadedBy: "James Wilson", uploadedByRole: "Financial Controller" },
-    { title: "Profit & Loss Summary", id: "DOC-0007", type: "Excel", uploadDate: "03/29/2026", uploadedBy: "Michael Chen", uploadedByRole: "Senior Financial Analyst" },
+    { title: "Q1 Financial Report 2026", type: "PDF", uploadDate: "03/31/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
+    { title: "Annual Budget Proposal", type: "Excel", uploadDate: "03/28/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
+    { title: "Expense Report - March", type: "PDF", uploadDate: "03/25/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
+    { title: "Tax Compliance Documents",  type: "PDF", uploadDate: "03/30/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
+    { title: "Revenue Analysis Report", type: "Excel", uploadDate: "03/27/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
+    { title: "Cash Flow Statement", type: "PDF", uploadDate: "03/26/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
+   ,
   ];
 
   return (
