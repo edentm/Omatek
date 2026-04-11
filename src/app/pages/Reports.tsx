@@ -105,13 +105,13 @@ export default function Reports() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Initial AI Confidence
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Date Created
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Date Finalized
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Initial AI Confidence
               </th>
             </tr>
           </thead>
@@ -136,18 +136,18 @@ export default function Reports() {
                     {report.status === "Finalized" ? "Finalized" : "Needs Approval"}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                  {report.date}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                  {report.finalizedDate ?? "—"}
-                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {(() => { const p = getConfidencePill(report.aiConfidence); return (
                     <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
                       {p.label}
                     </span>
                   ); })()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                  {report.date}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                  {report.finalizedDate ?? "—"}
                 </td>
               </tr>
             ))}

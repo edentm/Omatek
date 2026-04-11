@@ -198,15 +198,11 @@ export default function AIAnalysis() {
                     Issue Level
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date Flagged
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     AI Confidence
                   </th>
-                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date Flagged
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -220,18 +216,12 @@ export default function AIAnalysis() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
-                        issue.level === "High" 
-                          ? "bg-[#fef3f2] text-[#b42318]" 
+                        issue.level === "High"
+                          ? "bg-[#fef3f2] text-[#b42318]"
                           : "bg-[#fef0c7] text-[#dc6803]"
                       }`}>
                         {issue.level}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                      {issue.dateFlagged}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                      {issue.type}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {(() => { const p = getConfidencePill(issue.aiConfidence); return (
@@ -240,14 +230,8 @@ export default function AIAnalysis() {
                         </span>
                       ); })()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                          <path d="M10 10.8333C10.4602 10.8333 10.8333 10.4602 10.8333 10C10.8333 9.53976 10.4602 9.16667 10 9.16667C9.53976 9.16667 9.16667 9.53976 9.16667 10C9.16667 10.4602 9.53976 10.8333 10 10.8333Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M10 5C10.4602 5 10.8333 4.62691 10.8333 4.16667C10.8333 3.70643 10.4602 3.33333 10 3.33333C9.53976 3.33333 9.16667 3.70643 9.16667 4.16667C9.16667 4.62691 9.53976 5 10 5Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M10 16.6667C10.4602 16.6667 10.8333 16.2936 10.8333 15.8333C10.8333 15.3731 10.4602 15 10 15C9.53976 15 9.16667 15.3731 9.16667 15.8333C9.16667 16.2936 9.53976 16.6667 10 16.6667Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                      {issue.dateFlagged}
                     </td>
                   </tr>
                 ))}
