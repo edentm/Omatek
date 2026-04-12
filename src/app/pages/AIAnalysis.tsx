@@ -2,6 +2,7 @@ import { useState } from "react";
 
 export default function AIAnalysis() {
   const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('discrepancies');
+  const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
 
   const mockIssues = [
     { 
@@ -264,22 +265,42 @@ export default function AIAnalysis() {
           </div>
         </div>
       ) : (
-        <div className="relative w-full">
-          {/* Top row - 3 boxes */}
-          <div className="flex gap-[25px] mb-[32px]">
-            <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[319px]" />
-            <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[312px]" />
-            <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[339px]" />
+        <div className="w-full">
+          {/* Sub-navigation */}
+          <div className="border-b border-[#e8eef7] mb-6">
+            <div className="flex gap-4">
+              {(['profit', 'market', 'operations', 'debt'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveMetricsTab(tab)}
+                  className={`font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black pb-3 px-2 capitalize ${
+                    activeMetricsTab === tab ? 'border-b-[2.4px] border-black' : ''
+                  }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Middle row - 2 boxes */}
-          <div className="flex gap-[26px] mb-[32px]">
-            <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[444px]" />
-            <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[549px]" />
-          </div>
+          {/* Placeholder content boxes */}
+          <div className="relative w-full">
+            {/* Top row - 3 boxes */}
+            <div className="flex gap-[25px] mb-[32px]">
+              <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[319px]" />
+              <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[312px]" />
+              <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[339px]" />
+            </div>
 
-          {/* Bottom row - 1 large box */}
-          <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[174px] rounded-[10px] w-[1019px]" />
+            {/* Middle row - 2 boxes */}
+            <div className="flex gap-[26px] mb-[32px]">
+              <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[444px]" />
+              <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[127px] rounded-[10px] w-[549px]" />
+            </div>
+
+            {/* Bottom row - 1 large box */}
+            <div className="bg-white border-[#d0d5dd] border-[0.5px] border-solid h-[174px] rounded-[10px] w-full" />
+          </div>
         </div>
       )}
     </div>
