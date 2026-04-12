@@ -3,7 +3,7 @@ import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9
 import FilterButton from "../components/FilterButton";
 
 export default function Reports() {
-  const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -32,7 +32,7 @@ export default function Reports() {
 
   const defaultContent = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.`;
 
-  const openReport = (report: typeof mockReports[0]) => {
+  const openReport = (report: Report) => {
     setSelectedReport(report);
     setIsEditing(false);
     setReportContent(defaultContent);
@@ -46,7 +46,29 @@ export default function Reports() {
     return { label: `${confidence} - Low`, classes: "bg-[#fef3f2] text-[#b42318]" };
   };
 
-  const mockReports = [
+  // Generate report modal state
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateStep, setGenerateStep] = useState<'form' | 'generating' | 'complete'>('form');
+  const [reportSource, setReportSource] = useState<'keyMetrics' | 'discrepancies' | null>(null);
+  const [reportTimeframe, setReportTimeframe] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+
+  const closeGenerateModal = () => {
+    setShowGenerateModal(false);
+    setGenerateStep('form');
+    setReportSource(null);
+    setReportTimeframe('');
+    setReportDescription('');
+  };
+
+  const handleGenerate = () => {
+    setGenerateStep('generating');
+    setTimeout(() => setGenerateStep('complete'), 3500);
+  };
+
+  type Report = { title: string; id: string; type: string; category: string; date: string; status: string; finalizedDate?: string; aiConfidence: string };
+
+  const [reports, setReports] = useState<Report[]>([
     { title: "Q1 2026 Financial Summary", id: "FR-0001-2026", type: "Quarterly Report", category: "Financial Overview", date: "03/31/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "95%" },
     { title: "Annual Budget Forecast", id: "FR-0002-2026", type: "Budget Analysis", category: "Financial Planning", date: "03/28/2026", status: "Needs Approval", aiConfidence: "87%" },
     { title: "Expense Reconciliation Report", id: "FR-0003-2026", type: "Expense Report", category: "Accounting", date: "03/25/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "92%" },
@@ -54,7 +76,7 @@ export default function Reports() {
     { title: "Cash Flow Statement", id: "FR-0005-2026", type: "Financial Statement", category: "Treasury", date: "03/27/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "98%" },
     { title: "Tax Compliance Review", id: "FR-0006-2026", type: "Compliance Report", category: "Tax & Legal", date: "03/26/2026", status: "Needs Approval", aiConfidence: "83%" },
     { title: "Profit & Loss Statement", id: "FR-0007-2026", type: "Financial Statement", category: "Accounting", date: "03/29/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "91%" },
-  ];
+  ]);
 
   return (
     <div className="bg-white h-full w-full p-8 relative">
@@ -68,7 +90,10 @@ export default function Reports() {
           </p>
         </div>
 
-        <button className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors">
+        <button
+          onClick={() => setShowGenerateModal(true)}
+          className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+        >
           <svg className="size-5" fill="none" viewBox="0 0 20 20">
             <path
               d="M10 4.16667V15.8333M4.16667 10H15.8333"
@@ -177,7 +202,7 @@ export default function Reports() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {mockReports.filter(report => {
+            {reports.filter(report => {
               if (searchQuery && ![report.title, report.status].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
               if (statusFilter.length > 0 && !statusFilter.includes(report.status)) return false;
               if (dateCreatedFrom || dateCreatedTo) {
@@ -417,6 +442,182 @@ export default function Reports() {
           </button>
         </div>
       </div>
+
+      {/* Generate Report Modal */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40" onClick={generateStep === 'generating' ? undefined : closeGenerateModal} />
+
+          {/* Modal card */}
+          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[560px] mx-4 p-8 flex flex-col gap-6">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[22px] text-black leading-tight">
+                  Generate Report
+                </h2>
+                <p className="text-[14px] text-[#667085] mt-1">
+                  AI will compile a report from your existing analysis data.
+                </p>
+              </div>
+              {generateStep !== 'generating' && (
+                <button onClick={closeGenerateModal} className="text-[#667085] hover:text-black ml-4 shrink-0">
+                  <svg className="size-5" fill="none" viewBox="0 0 20 20">
+                    <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* ── FORM ── */}
+            {generateStep === 'form' && (
+              <>
+                {/* Source selection */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Data Source</label>
+                  <div className="flex gap-3">
+                    {([['keyMetrics', 'Key Metrics'], ['discrepancies', 'Discrepancies']] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setReportSource(val)}
+                        className={`flex-1 h-[44px] rounded-[10px] border text-[14px] transition-colors ${
+                          reportSource === val
+                            ? 'border-[#144430] bg-[#f0faf4] text-[#144430] font-medium'
+                            : 'border-[#d0d5dd] bg-white text-[#344054] hover:bg-gray-50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Timeframe */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Timeframe</label>
+                  <select
+                    value={reportTimeframe}
+                    onChange={(e) => setReportTimeframe(e.target.value)}
+                    className="h-[44px] px-3 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] bg-white appearance-none focus:outline-none focus:border-[#667085]"
+                  >
+                    <option value="">Select a timeframe…</option>
+                    <option value="Q1 2026">Q1 2026</option>
+                    <option value="Q4 2025">Q4 2025</option>
+                    <option value="Q3 2025">Q3 2025</option>
+                    <option value="FY 2025">FY 2025</option>
+                    <option value="FY 2024">FY 2024</option>
+                    <option value="Custom">Custom range</option>
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">
+                    Additional Instructions <span className="text-[#98a2b3] font-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    value={reportDescription}
+                    onChange={(e) => setReportDescription(e.target.value)}
+                    placeholder="e.g. Focus on cost reduction trends, include variance analysis…"
+                    rows={3}
+                    className="px-3 py-2.5 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] resize-none focus:outline-none focus:border-[#667085] placeholder:text-[#98a2b3]"
+                  />
+                </div>
+
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleGenerate}
+                    disabled={!reportSource || !reportTimeframe}
+                    className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                      <path d="M10 2.5L12.09 7.26L17.5 7.64L13.63 11L14.82 16.25L10 13.5L5.18 16.25L6.37 11L2.5 7.64L7.91 7.26L10 2.5Z" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Generate Report</span>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* ── GENERATING ── */}
+            {generateStep === 'generating' && (
+              <div className="flex flex-col items-center gap-5 py-8">
+                <div className="relative size-16">
+                  <svg className="size-16 animate-spin" viewBox="0 0 64 64" fill="none">
+                    <circle cx="32" cy="32" r="28" stroke="#e5e7eb" strokeWidth="6"/>
+                    <path d="M32 4a28 28 0 0 1 28 28" stroke="#144430" strokeWidth="6" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">Generating report…</p>
+                  <p className="text-[13px] text-[#667085] mt-1">AI is compiling your report. This may take a moment.</p>
+                </div>
+                <div className="flex flex-col gap-2 w-full">
+                  {["Retrieving analysis data", "Structuring report sections", "Applying financial context", "Finalising draft"].map((step, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-[#f9fafb] rounded-lg">
+                      <div className="size-4 rounded-full border-2 border-[#144430] border-t-transparent animate-spin shrink-0" style={{ animationDelay: `${i * 0.2}s` }} />
+                      <span className="text-[13px] text-[#344054]">{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── COMPLETE ── */}
+            {generateStep === 'complete' && (
+              <>
+                <div className="flex items-center gap-2 text-[#027a48]">
+                  <svg className="size-5" viewBox="0 0 20 20" fill="none">
+                    <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Report generated successfully</span>
+                </div>
+
+                <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-3">
+                  <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black">Report Summary</p>
+                  <p className="text-[13px] text-[#475467] leading-[20px]">
+                    The AI has compiled a {reportSource === 'keyMetrics' ? 'Key Metrics' : 'Discrepancies'} report for {reportTimeframe}. The report covers financial performance indicators extracted from ingested documents, including revenue trends, expense breakdowns, and variance analysis against the prior period.
+                  </p>
+                  <p className="text-[13px] text-[#475467] leading-[20px]">
+                    The draft has been added to your Reports list with "Needs Approval" status. Review the content and use the Finalize button to mark it as complete.
+                  </p>
+                </div>
+
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={closeGenerateModal}
+                    className="h-[43px] px-5 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] hover:bg-gray-50 transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newId = `FR-${String(reports.length + 1).padStart(4, '0')}-2026`;
+                      const title = `${reportTimeframe} ${reportSource === 'keyMetrics' ? 'Key Metrics' : 'Discrepancies'} Report`;
+                      const newReport: Report = {
+                        title,
+                        id: newId,
+                        type: reportSource === 'keyMetrics' ? 'Key Metrics Report' : 'Discrepancy Report',
+                        category: reportSource === 'keyMetrics' ? 'Financial Analysis' : 'Audit & Review',
+                        date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+                        status: 'Needs Approval',
+                        aiConfidence: '89%',
+                      };
+                      setReports(prev => [newReport, ...prev]);
+                      closeGenerateModal();
+                      openReport(newReport);
+                    }}
+                    className="h-[43px] px-5 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors"
+                  >
+                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">View Report</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Collapsed panel indicator */}
       {selectedReport && !isPanelExpanded && (

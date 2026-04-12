@@ -10,28 +10,9 @@ export default function Settings() {
         </p>
       </div>
 
-      <div className="max-w-3xl">
-        {/* Placeholder content boxes */}
-        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid rounded-[10px] p-6 mb-6">
-          <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black mb-2">
-            Account Settings
-          </h2>
-          <p className="text-[14px] text-gray-600">
-            Manage your account preferences and profile information.
-          </p>
-        </div>
-
-        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid rounded-[10px] p-6 mb-6">
-          <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black mb-2">
-            Security Settings
-          </h2>
-          <p className="text-[14px] text-gray-600">
-            Update your password and security preferences.
-          </p>
-        </div>
-
+       
         
-      </div>
+    
     </div>
   );
 }
