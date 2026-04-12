@@ -2,7 +2,7 @@ import { useState } from "react";
 import FilterButton from "../components/FilterButton";
 
 export default function AIAnalysis() {
-  const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('discrepancies');
+  const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('keyMetrics');
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
 
   // Modal + confirmation state
