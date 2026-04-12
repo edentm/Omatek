@@ -98,14 +98,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-6 mb-6">
-        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[253px] rounded-[10px]" />
-        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[253px] rounded-[10px]" />
+        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[420px] rounded-[10px]" />
+        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[420px] rounded-[10px]" />
       </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[294px] rounded-[10px]" />
-        <div className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[294px] rounded-[10px]" />
-      </div>
-    </div>
+</div>
+      
   );
 }
