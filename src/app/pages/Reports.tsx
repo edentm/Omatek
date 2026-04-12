@@ -49,16 +49,22 @@ export default function Reports() {
   // Generate report modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateStep, setGenerateStep] = useState<'form' | 'generating' | 'complete'>('form');
-  const [reportSource, setReportSource] = useState<'keyMetrics' | 'discrepancies' | null>(null);
-  const [reportTimeframe, setReportTimeframe] = useState('');
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [selectedDiscrepancyLevels, setSelectedDiscrepancyLevels] = useState<string[]>([]);
+  const [reportTimeframeFrom, setReportTimeframeFrom] = useState('');
+  const [reportTimeframeTo, setReportTimeframeTo] = useState('');
   const [reportDescription, setReportDescription] = useState('');
+  const [openModalFilter, setOpenModalFilter] = useState<string | null>(null);
 
   const closeGenerateModal = () => {
     setShowGenerateModal(false);
     setGenerateStep('form');
-    setReportSource(null);
-    setReportTimeframe('');
+    setSelectedMetrics([]);
+    setSelectedDiscrepancyLevels([]);
+    setReportTimeframeFrom('');
+    setReportTimeframeTo('');
     setReportDescription('');
+    setOpenModalFilter(null);
   };
 
   const handleGenerate = () => {
@@ -473,42 +479,82 @@ export default function Reports() {
             {/* ── FORM ── */}
             {generateStep === 'form' && (
               <>
-                {/* Source selection */}
+                {/* Data source selectors */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Data Source</label>
-                  <div className="flex gap-3">
-                    {([['keyMetrics', 'Key Metrics'], ['discrepancies', 'Discrepancies']] as const).map(([val, label]) => (
-                      <button
-                        key={val}
-                        onClick={() => setReportSource(val)}
-                        className={`flex-1 h-[44px] rounded-[10px] border text-[14px] transition-colors ${
-                          reportSource === val
-                            ? 'border-[#144430] bg-[#f0faf4] text-[#144430] font-medium'
-                            : 'border-[#d0d5dd] bg-white text-[#344054] hover:bg-gray-50'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Data to Include</label>
+                  <div className="flex gap-2 flex-wrap">
+                    <FilterButton
+                      label="Key Metrics"
+                      type="checkbox"
+                      options={[
+                        { value: "Revenue", label: "Revenue" },
+                        { value: "Administrative Expenses", label: "Administrative Expenses" },
+                        { value: "Net Loss", label: "Net Loss" },
+                        { value: "Market Cap", label: "Market Cap" },
+                        { value: "Share Price", label: "Share Price" },
+                        { value: "Number of Employees", label: "Number of Employees" },
+                        { value: "Salaries & Staff Costs", label: "Salaries & Staff Costs" },
+                        { value: "Total Debt", label: "Total Debt" },
+                        { value: "Long-term Debt", label: "Long-term Debt" },
+                        { value: "Trade & Other Payables", label: "Trade & Other Payables" },
+                        { value: "Accrued Expenses", label: "Accrued Expenses" },
+                      ]}
+                      selected={selectedMetrics}
+                      onChange={setSelectedMetrics}
+                      isOpen={openModalFilter === 'metrics'}
+                      onToggle={() => setOpenModalFilter(prev => prev === 'metrics' ? null : 'metrics')}
+                      onClose={() => setOpenModalFilter(null)}
+                    />
+                    <FilterButton
+                      label="Discrepancies"
+                      type="checkbox"
+                      options={[
+                        { value: "High", label: "High" },
+                        { value: "Medium", label: "Medium" },
+                        { value: "Low", label: "Low" },
+                      ]}
+                      selected={selectedDiscrepancyLevels}
+                      onChange={setSelectedDiscrepancyLevels}
+                      isOpen={openModalFilter === 'discrepancies'}
+                      onToggle={() => setOpenModalFilter(prev => prev === 'discrepancies' ? null : 'discrepancies')}
+                      onClose={() => setOpenModalFilter(null)}
+                    />
                   </div>
                 </div>
 
-                {/* Timeframe */}
+                {/* Timeframe — date range matching FilterButton style */}
                 <div className="flex flex-col gap-2">
                   <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Timeframe</label>
-                  <select
-                    value={reportTimeframe}
-                    onChange={(e) => setReportTimeframe(e.target.value)}
-                    className="h-[44px] px-3 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] bg-white appearance-none focus:outline-none focus:border-[#667085]"
-                  >
-                    <option value="">Select a timeframe…</option>
-                    <option value="Q1 2026">Q1 2026</option>
-                    <option value="Q4 2025">Q4 2025</option>
-                    <option value="Q3 2025">Q3 2025</option>
-                    <option value="FY 2025">FY 2025</option>
-                    <option value="FY 2024">FY 2024</option>
-                    <option value="Custom">Custom range</option>
-                  </select>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="text-[12px] text-[#667085] mb-1 block">From</label>
+                      <input
+                        type="date"
+                        value={reportTimeframeFrom}
+                        onChange={(e) => setReportTimeframeFrom(e.target.value)}
+                        className="w-full h-[36px] px-3 border border-[#d0d5dd] rounded-lg text-[14px] focus:outline-none focus:border-[#667085]"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[12px] text-[#667085] mb-1 block">To</label>
+                      <input
+                        type="date"
+                        value={reportTimeframeTo}
+                        onChange={(e) => setReportTimeframeTo(e.target.value)}
+                        className="w-full h-[36px] px-3 border border-[#d0d5dd] rounded-lg text-[14px] focus:outline-none focus:border-[#667085]"
+                      />
+                    </div>
+                    {(reportTimeframeFrom || reportTimeframeTo) && (
+                      <div className="flex items-end pb-0.5">
+                        <button
+                          onClick={() => { setReportTimeframeFrom(''); setReportTimeframeTo(''); }}
+                          className="text-[12px] text-[#667085] hover:text-black whitespace-nowrap"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Description */}
@@ -528,7 +574,7 @@ export default function Reports() {
                 <div className="flex justify-center">
                   <button
                     onClick={handleGenerate}
-                    disabled={!reportSource || !reportTimeframe}
+                    disabled={(selectedMetrics.length === 0 && selectedDiscrepancyLevels.length === 0) || (!reportTimeframeFrom && !reportTimeframeTo)}
                     className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg className="size-4" fill="none" viewBox="0 0 20 20">
@@ -577,7 +623,12 @@ export default function Reports() {
                 <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-3">
                   <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black">Report Summary</p>
                   <p className="text-[13px] text-[#475467] leading-[20px]">
-                    The AI has compiled a {reportSource === 'keyMetrics' ? 'Key Metrics' : 'Discrepancies'} report for {reportTimeframe}. The report covers financial performance indicators extracted from ingested documents, including revenue trends, expense breakdowns, and variance analysis against the prior period.
+                    The AI has compiled a report covering
+                    {selectedMetrics.length > 0 && <> <strong>{selectedMetrics.join(', ')}</strong></>}
+                    {selectedMetrics.length > 0 && selectedDiscrepancyLevels.length > 0 && <> and</>}
+                    {selectedDiscrepancyLevels.length > 0 && <> <strong>{selectedDiscrepancyLevels.join(', ')}</strong> discrepancies</>}
+                    {(reportTimeframeFrom || reportTimeframeTo) && <> for the period {reportTimeframeFrom || '…'} – {reportTimeframeTo || '…'}</>}.
+                    {' '}Financial performance indicators have been extracted from ingested documents, including revenue trends, expense breakdowns, and variance analysis.
                   </p>
                   <p className="text-[13px] text-[#475467] leading-[20px]">
                     The draft has been added to your Reports list with "Needs Approval" status. Review the content and use the Finalize button to mark it as complete.
@@ -594,12 +645,18 @@ export default function Reports() {
                   <button
                     onClick={() => {
                       const newId = `FR-${String(reports.length + 1).padStart(4, '0')}-2026`;
-                      const title = `${reportTimeframe} ${reportSource === 'keyMetrics' ? 'Key Metrics' : 'Discrepancies'} Report`;
+                      const hasMetrics = selectedMetrics.length > 0;
+                      const hasDiscrepancies = selectedDiscrepancyLevels.length > 0;
+                      const title = hasMetrics && hasDiscrepancies
+                        ? `Custom Analysis Report`
+                        : hasMetrics
+                          ? `${selectedMetrics[0]}${selectedMetrics.length > 1 ? ' & More' : ''} Report`
+                          : `${selectedDiscrepancyLevels.join('/')} Discrepancy Report`;
                       const newReport: Report = {
                         title,
                         id: newId,
-                        type: reportSource === 'keyMetrics' ? 'Key Metrics Report' : 'Discrepancy Report',
-                        category: reportSource === 'keyMetrics' ? 'Financial Analysis' : 'Audit & Review',
+                        type: hasMetrics && hasDiscrepancies ? 'Combined Report' : hasMetrics ? 'Key Metrics Report' : 'Discrepancy Report',
+                        category: hasMetrics ? 'Financial Analysis' : 'Audit & Review',
                         date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
                         status: 'Needs Approval',
                         aiConfidence: '89%',
