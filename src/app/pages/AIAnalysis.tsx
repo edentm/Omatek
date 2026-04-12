@@ -713,7 +713,7 @@ export default function AIAnalysis() {
           showUploadConfirmation ? "translate-x-0 opacity-100" : "translate-x-[120%] opacity-0 pointer-events-none"
         }`}
       >
-        <div className="bg-white border border-[#d0d5dd] rounded-[12px] shadow-lg px-5 py-4 flex items-start gap-4 min-w-[300px]">
+        <div className="bg-[#ecfdf3] border border-[#a9efc5] rounded-[12px] shadow-lg px-5 py-4 flex items-start gap-4 min-w-[300px]">
           <div className="flex items-center justify-center size-9 bg-[#ecfdf3] rounded-full shrink-0 mt-0.5">
             <svg className="size-5" viewBox="0 0 20 20" fill="none">
               <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
