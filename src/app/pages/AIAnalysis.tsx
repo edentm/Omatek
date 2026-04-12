@@ -9,7 +9,6 @@ export default function AIAnalysis() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
   const [modalStep, setModalStep] = useState<'idle' | 'analyzing' | 'complete'>('idle');
 
   const closeModal = () => {
@@ -38,7 +37,6 @@ export default function AIAnalysis() {
 
   const handleSave = () => {
     closeModal();
-    setShowUploadConfirmation(true);
   };
 
   useEffect(() => {
@@ -762,32 +760,6 @@ export default function AIAnalysis() {
         </div>
       )}
 
-      {/* Upload confirmation toast */}
-      <div
-        className={`fixed top-6 right-6 z-[2000] transition-all duration-300 ease-out ${
-          showUploadConfirmation ? "translate-x-0 opacity-100" : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
-      >
-        <div className="bg-[#ecfdf3] border border-[#a9efc5] rounded-[12px] shadow-lg px-5 py-4 flex items-start gap-4 min-w-[300px]">
-          <div className="flex items-center justify-center size-9 bg-[#ecfdf3] rounded-full shrink-0 mt-0.5">
-            <svg className="size-5" viewBox="0 0 20 20" fill="none">
-              <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black leading-[20px]">Upload successful</p>
-            <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085] leading-[18px] mt-0.5">Your documents are being analyzed. Results will appear in Key Metrics and Discrepancies.</p>
-          </div>
-          <button
-            onClick={() => setShowUploadConfirmation(false)}
-            className="text-[#667085] hover:text-gray-900 shrink-0 mt-0.5"
-          >
-            <svg className="size-4" viewBox="0 0 16 16" fill="none">
-              <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
 
     </div>
   );
