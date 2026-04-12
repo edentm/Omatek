@@ -48,61 +48,38 @@ export default function AIAnalysis() {
 
   const mockIngestionData = [
     {
-      name: "Q1 Financial Report 2026",
+      name: "Financial Report 2026",
       id: "DOC-0001",
       numberOfDocs: "12",
       uploadDate: "03/31/2026",
-      uploadedBy: "Sarah Johnson",
-      role: "Chief Financial Officer"
+      uploadedBy: "Oladosu Teyibo",
+      role: "Administrator"
     },
     {
       name: "Annual Budget Proposal",
       id: "DOC-0002",
       numberOfDocs: "8",
       uploadDate: "03/28/2026",
-      uploadedBy: "David Thompson",
-      role: "Budget Director"
+      uploadedBy: "Oladosu Teyibo",
+      role: "Administrator"
     },
     {
-      name: "Expense Report - March",
+      name: "Expense Report - March & April",
       id: "DOC-0003",
       numberOfDocs: "15",
       uploadDate: "03/25/2026",
-      uploadedBy: "Emily Rodriguez",
-      role: "Accounting Manager"
+      uploadedBy: "Oladosu Teyibo",
+      role: "Administrator"
     },
     {
-      name: "Tax Compliance Documents",
+      name: "Initial Upload - All Existing Docs",
       id: "DOC-0004",
       numberOfDocs: "24",
       uploadDate: "03/30/2026",
-      uploadedBy: "Lisa Anderson",
-      role: "Tax Compliance Specialist"
+      uploadedBy: "Oladosu Teyibo",
+      role: "Administrator"
     },
-    {
-      name: "Revenue Analysis Report",
-      id: "DOC-0005",
-      numberOfDocs: "6",
-      uploadDate: "03/27/2026",
-      uploadedBy: "Maria Garcia",
-      role: "Revenue Analyst"
-    },
-    {
-      name: "Cash Flow Statement",
-      id: "DOC-0006",
-      numberOfDocs: "18",
-      uploadDate: "03/26/2026",
-      uploadedBy: "James Wilson",
-      role: "Financial Controller"
-    },
-    {
-      name: "Profit & Loss Summary",
-      id: "DOC-0007",
-      numberOfDocs: "10",
-      uploadDate: "03/29/2026",
-      uploadedBy: "Michael Chen",
-      role: "Senior Financial Analyst"
-    },
+   
   ];
 
   return (

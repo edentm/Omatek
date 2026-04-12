@@ -5,7 +5,18 @@ export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [reportContent, setReportContent] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+  const defaultContent = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.`;
+
+  const openReport = (report: typeof mockReports[0]) => {
+    setSelectedReport(report);
+    setIsEditing(false);
+    setReportContent(defaultContent);
+  };
 
   const getConfidencePill = (confidence: string) => {
     const value = parseInt(confidence);
@@ -128,7 +139,7 @@ export default function Reports() {
               <tr 
                 key={index} 
                 className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => setSelectedReport(report)}
+                onClick={() => openReport(report)}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
@@ -206,7 +217,7 @@ export default function Reports() {
                 </div>
                 {/* Close button */}
                 <button
-                  onClick={() => { setSelectedReport(null); setIsFullWidth(false); }}
+                  onClick={() => { setSelectedReport(null); setIsFullWidth(false); setIsEditing(false); }}
                   className="size-5 text-[#667085] hover:text-gray-800"
                 >
                   <svg className="size-full" fill="none" viewBox="0 0 20 20">
@@ -252,23 +263,54 @@ export default function Reports() {
                 </div>
 
                 {/* Body content */}
-                <div className="text-[14px] text-[#475467] space-y-4 leading-[22.75px]">
-                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-                  <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.</p>
-                  <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.</p>
-                </div>
+                {isEditing ? (
+                  <textarea
+                    value={reportContent}
+                    onChange={(e) => setReportContent(e.target.value)}
+                    className="w-full h-full min-h-[400px] text-[14px] text-[#475467] leading-[22.75px] border border-[#d0d5dd] rounded-lg px-4 py-3 resize-none focus:outline-none focus:border-[#667085] bg-[#f9fafb]"
+                    style={{ height: 'calc(100vh - 320px)' }}
+                  />
+                ) : (
+                  <div className="text-[14px] text-[#475467] space-y-4 leading-[22.75px]">
+                    {reportContent.split("\n\n").map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Footer Buttons — hidden for approved reports */}
               {selectedReport.status !== "Finalized" && (
                 <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white border-t-2 border-[#eaecf0]">
                   <div className="flex gap-4 justify-center items-center">
-                    {/* Edit Button */}
-                    <button className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2">
-                      <svg className="size-6" viewBox="0 0 24 24" fill="none">
-                        <path clipRule="evenodd" d={svgPaths.p3d4e8980} fill="#667085" fillRule="evenodd" />
-                      </svg>
-                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
+                    {/* Edit / Save Button */}
+                    <button
+                      onClick={() => {
+                        if (isEditing) {
+                          setIsEditing(false);
+                          setShowSaveConfirmation(true);
+                        } else {
+                          setIsEditing(true);
+                        }
+                      }}
+                      className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2"
+                    >
+                      {isEditing ? (
+                        <>
+                          <svg className="size-5" viewBox="0 0 20 20" fill="none">
+                            <path d="M15.833 17.5H4.167A1.667 1.667 0 0 1 2.5 15.833V4.167A1.667 1.667 0 0 1 4.167 2.5h9.166L17.5 6.667v9.166A1.667 1.667 0 0 1 15.833 17.5Z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M14.167 17.5V10.833H5.833V17.5M5.833 2.5v4.167h6.667" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Save</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="size-6" viewBox="0 0 24 24" fill="none">
+                            <path clipRule="evenodd" d={svgPaths.p3d4e8980} fill="#667085" fillRule="evenodd" />
+                          </svg>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
+                        </>
+                      )}
                     </button>
                     {/* Sign Off Button */}
                     <button className="h-[53px] px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2">
@@ -286,6 +328,33 @@ export default function Reports() {
           )}
         </div>
       )}
+
+      {/* Save confirmation toast */}
+      <div
+        className={`fixed top-6 right-6 z-[2000] transition-all duration-300 ease-out ${
+          showSaveConfirmation ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="bg-white border border-[#d0d5dd] rounded-[12px] shadow-lg px-5 py-4 flex items-start gap-4 min-w-[300px]">
+          <div className="flex items-center justify-center size-9 bg-[#ecfdf3] rounded-full shrink-0 mt-0.5">
+            <svg className="size-5" viewBox="0 0 20 20" fill="none">
+              <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black leading-[20px]">Changes saved</p>
+            <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085] leading-[18px] mt-0.5">Your edits to the report have been saved successfully.</p>
+          </div>
+          <button
+            onClick={() => setShowSaveConfirmation(false)}
+            className="text-[#667085] hover:text-gray-900 shrink-0 mt-0.5"
+          >
+            <svg className="size-4" viewBox="0 0 16 16" fill="none">
+              <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
 
       {/* Collapsed panel indicator */}
       {selectedReport && !isPanelExpanded && (
