@@ -24,6 +24,7 @@ const cards = [
     label: "Share Price",
     value: "₦2.47",
     subtext: "NGX · Apr 8, 2026",
+    sourceUrl: "https://afx.kwayisi.org/ngx/omatek.html",
     change: "+8.91%",
     positive: true,
   },
@@ -31,6 +32,7 @@ const cards = [
     label: "Market Cap",
     value: "₦6.94B",
     subtext: "NGX · Apr 8, 2026",
+    sourceUrl: "https://stockanalysis.com/quote/ngx/OMATEK/statistics/",
     change: "Rank #125 on NGX",
     positive: true,
     noArrow: true,
@@ -89,9 +91,20 @@ export default function Dashboard() {
                   {card.change}
                 </span>
               </div>
-              <p className="text-[11px] text-[#98a2b3] font-['Figtree:Regular',sans-serif]">
-                {card.subtext}
-              </p>
+              {card.sourceUrl ? (
+                <a
+                  href={card.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-[#98a2b3] font-['Figtree:Regular',sans-serif] underline underline-offset-2 hover:text-[#667085] transition-colors"
+                >
+                  {card.subtext}
+                </a>
+              ) : (
+                <p className="text-[11px] text-[#98a2b3] font-['Figtree:Regular',sans-serif]">
+                  {card.subtext}
+                </p>
+              )}
             </div>
           </div>
         ))}
