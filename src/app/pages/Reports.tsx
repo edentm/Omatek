@@ -456,7 +456,7 @@ export default function Reports() {
           <div className="absolute inset-0 bg-black/40" onClick={generateStep === 'generating' ? undefined : closeGenerateModal} />
 
           {/* Modal card */}
-          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[560px] mx-4 p-8 flex flex-col gap-6">
+          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[680px] mx-4 p-8 flex flex-col gap-6">
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
@@ -614,10 +614,10 @@ export default function Reports() {
             {generateStep === 'complete' && (
               <>
                 <div className="flex items-center gap-2 text-[#027a48]">
-                  <svg className="size-5" viewBox="0 0 20 20" fill="none">
+                  <svg className="size-4 shrink-0" viewBox="0 0 40 40" fill="none">
                     <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Report generated successfully</span>
+                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Draft generated successfully! The draft has been added to your Reports list with "Needs Approval" status. Review the content to mark it as complete.</span>
                 </div>
 
                 <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-3">
@@ -629,9 +629,6 @@ export default function Reports() {
                     {selectedDiscrepancyLevels.length > 0 && <> <strong>{selectedDiscrepancyLevels.join(', ')}</strong> discrepancies</>}
                     {(reportTimeframeFrom || reportTimeframeTo) && <> for the period {reportTimeframeFrom || '…'} – {reportTimeframeTo || '…'}</>}.
                     {' '}Financial performance indicators have been extracted from ingested documents, including revenue trends, expense breakdowns, and variance analysis.
-                  </p>
-                  <p className="text-[13px] text-[#475467] leading-[20px]">
-                    The draft has been added to your Reports list with "Needs Approval" status. Review the content and use the Finalize button to mark it as complete.
                   </p>
                 </div>
 

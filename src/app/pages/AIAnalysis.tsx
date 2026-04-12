@@ -628,7 +628,7 @@ export default function AIAnalysis() {
           />
 
           {/* Modal card */}
-          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[560px] mx-4 p-8 flex flex-col gap-6">
+          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[680px] mx-4 p-8 flex flex-col gap-6">
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
@@ -731,10 +731,10 @@ export default function AIAnalysis() {
             {modalStep === 'complete' && (
               <>
                 <div className="flex items-center gap-2 text-[#027a48]">
-                  <svg className="size-5" viewBox="0 0 20 20" fill="none">
+                  <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="none">
                     <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Analysis complete</span>
+                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Analysis complete. Extracted metrics and any flagged disprecpanices will appear in their respective tabs.</span>
                 </div>
 
                 <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-4">
@@ -750,10 +750,10 @@ export default function AIAnalysis() {
                 <div className="flex justify-center">
                   <button onClick={handleSave} className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors">
                     <svg className="size-4" viewBox="0 0 20 20" fill="none">
-                      <path d="M15.833 17.5H4.167A1.667 1.667 0 0 1 2.5 15.833V4.167A1.667 1.667 0 0 1 4.167 2.5h9.166L17.5 6.667v9.166A1.667 1.667 0 0 1 15.833 17.5Z" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M14.167 17.5V10.833H5.833V17.5M5.833 2.5v4.167h6.667" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="10" cy="10" r="7.5" stroke="#EAECF0" strokeWidth="1.5"/>
+                      <path d="M6.5 10L9 12.5L13.5 7.5" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Save</span>
+                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Complete Analysis</span>
                   </button>
                 </div>
               </>
