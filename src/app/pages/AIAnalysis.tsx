@@ -5,6 +5,31 @@ export default function AIAnalysis() {
   const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('discrepancies');
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
 
+  // Modal + confirmation state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const incoming = Array.from(e.dataTransfer.files);
+    setUploadedFiles(prev => [...prev, ...incoming].slice(0, 20));
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const incoming = Array.from(e.target.files);
+    setUploadedFiles(prev => [...prev, ...incoming].slice(0, 20));
+  };
+
+  const handleUpload = () => {
+    setShowUploadModal(false);
+    setUploadedFiles([]);
+    setShowUploadConfirmation(true);
+  };
+
   // Filter state
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [issueLevelFilter, setIssueLevelFilter] = useState<string[]>([]);
@@ -110,7 +135,10 @@ export default function AIAnalysis() {
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">Extract key findings from uploaded documents with AI</p>
         </div>
 
-        <button className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors">
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+        >
           <svg className="size-5" fill="none" viewBox="0 0 20 20">
             <path
               d="M10 4.16667V15.8333M4.16667 10H15.8333"
@@ -575,6 +603,137 @@ export default function AIAnalysis() {
           </div>
         </div>
       )}
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowUploadModal(false)}
+          />
+
+          {/* Modal card */}
+          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[560px] mx-4 p-8 flex flex-col gap-6">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[22px] text-black leading-tight">
+                  Upload & Analyze Documents
+                </h2>
+                <p className="text-[14px] text-[#667085] mt-1">
+                  AI will extract key metrics and flag discrepancies from your documents.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="text-[#667085] hover:text-black ml-4 shrink-0"
+              >
+                <svg className="size-5" fill="none" viewBox="0 0 20 20">
+                  <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleFileDrop}
+              className={`border-2 border-dashed rounded-[12px] px-6 py-10 flex flex-col items-center gap-3 transition-colors ${
+                isDragging ? "border-black bg-gray-50" : "border-[#d0d5dd] bg-[#f9fafb]"
+              }`}
+            >
+              <div className="size-12 bg-white border border-[#d0d5dd] rounded-full flex items-center justify-center shadow-sm">
+                <svg className="size-5 text-[#667085]" fill="none" viewBox="0 0 20 20">
+                  <path d="M10 13.333V3.333M10 3.333L6.667 6.667M10 3.333L13.333 6.667" stroke="currentColor" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3.333 13.333v1.334A2.333 2.333 0 0 0 5.667 17h8.666a2.333 2.333 0 0 0 2.334-2.333v-1.334" stroke="currentColor" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-[14px] text-black font-['Figtree:Medium',sans-serif]">
+                  Drag and drop files here
+                </p>
+                <p className="text-[13px] text-[#667085] mt-0.5">or</p>
+              </div>
+              <label className="cursor-pointer h-[36px] px-5 border border-[#d0d5dd] rounded-lg text-[14px] text-[#344054] bg-white hover:bg-gray-50 transition-colors flex items-center">
+                Browse files
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.xlsx,.xls,.doc,.docx,.csv"
+                  className="hidden"
+                  onChange={handleFileInput}
+                />
+              </label>
+              <p className="text-[12px] text-[#98a2b3]">
+                PDF, Excel, Word, CSV · Max 20 documents
+              </p>
+            </div>
+
+            {/* File list */}
+            {uploadedFiles.length > 0 && (
+              <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto">
+                <p className="text-[12px] text-[#667085]">{uploadedFiles.length} / 20 files selected</p>
+                {uploadedFiles.map((file, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 bg-[#f9fafb] border border-[#eaecf0] rounded-lg">
+                    <span className="text-[13px] text-black truncate">{file.name}</span>
+                    <button
+                      onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                      className="text-[#98a2b3] hover:text-[#b42318] ml-3 shrink-0"
+                    >
+                      <svg className="size-4" fill="none" viewBox="0 0 16 16">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Footer buttons */}
+            <div className="flex justify-center">
+              <button
+                onClick={handleUpload}
+                className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors"
+              >
+                <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                  <path d="M10 13.333V3.333M10 3.333L6.667 6.667M10 3.333L13.333 6.667" stroke="#EAECF0" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3.333 13.333v1.334A2.333 2.333 0 0 0 5.667 17h8.666a2.333 2.333 0 0 0 2.334-2.333v-1.334" stroke="#EAECF0" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Upload & Analyze</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload confirmation toast */}
+      <div
+        className={`fixed top-6 right-6 z-[2000] transition-all duration-300 ease-out ${
+          showUploadConfirmation ? "translate-x-0 opacity-100" : "translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="bg-white border border-[#d0d5dd] rounded-[12px] shadow-lg px-5 py-4 flex items-start gap-4 min-w-[300px]">
+          <div className="flex items-center justify-center size-9 bg-[#ecfdf3] rounded-full shrink-0 mt-0.5">
+            <svg className="size-5" viewBox="0 0 20 20" fill="none">
+              <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black leading-[20px]">Upload successful</p>
+            <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085] leading-[18px] mt-0.5">Your documents are being analyzed. Results will appear in Key Metrics and Discrepancies.</p>
+          </div>
+          <button
+            onClick={() => setShowUploadConfirmation(false)}
+            className="text-[#667085] hover:text-gray-900 shrink-0 mt-0.5"
+          >
+            <svg className="size-4" viewBox="0 0 16 16" fill="none">
+              <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }
