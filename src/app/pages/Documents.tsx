@@ -1,7 +1,21 @@
 import { useState } from "react";
+import FilterButton from "../components/FilterButton";
 
 export default function Documents() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [uploadDateFrom, setUploadDateFrom] = useState("");
+  const [uploadDateTo, setUploadDateTo] = useState("");
+
+  const toggleFilter = (name: string) => setOpenFilter(prev => prev === name ? null : name);
+
+  const parseDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split("/");
+    if (parts.length !== 3) return null;
+    return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+  };
 
   const mockDocuments = [
     { title: "Q1 Financial Report 2026", type: "PDF", uploadDate: "03/31/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
@@ -58,18 +72,30 @@ export default function Documents() {
 
       {/* Filters */}
       <div className="flex gap-2 mb-6">
-        <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Type
-          <svg className="size-4" fill="none" viewBox="0 0 16 16">
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Upload Date
-          <svg className="size-4" fill="none" viewBox="0 0 16 16">
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        <FilterButton
+          label="Type"
+          type="checkbox"
+          options={[
+            { value: "PDF", label: "PDF" },
+            { value: "Excel", label: "Excel" },
+          ]}
+          selected={typeFilter}
+          onChange={setTypeFilter}
+          isOpen={openFilter === "type"}
+          onToggle={() => toggleFilter("type")}
+          onClose={() => setOpenFilter(null)}
+        />
+        <FilterButton
+          label="Upload Date"
+          type="daterange"
+          from={uploadDateFrom}
+          to={uploadDateTo}
+          onFromChange={setUploadDateFrom}
+          onToChange={setUploadDateTo}
+          isOpen={openFilter === "uploadDate"}
+          onToggle={() => toggleFilter("uploadDate")}
+          onClose={() => setOpenFilter(null)}
+        />
       </div>
 
       {/* Table */}
@@ -93,11 +119,16 @@ export default function Documents() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {mockDocuments.filter(doc =>
-              [doc.title, doc.type, doc.uploadedBy].some(field =>
-                field.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-            ).map((doc, index) => (
+            {mockDocuments.filter(doc => {
+              if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+              if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
+              if (uploadDateFrom || uploadDateTo) {
+                const d = parseDate(doc.uploadDate);
+                if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
+                if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
+              }
+              return true;
+            }).map((doc, index) => (
               <tr key={index} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">

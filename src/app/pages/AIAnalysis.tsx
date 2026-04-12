@@ -1,8 +1,25 @@
 import { useState } from "react";
+import FilterButton from "../components/FilterButton";
 
 export default function AIAnalysis() {
   const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('discrepancies');
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
+
+  // Filter state
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [issueLevelFilter, setIssueLevelFilter] = useState<string[]>([]);
+  const [dateFlaggedFrom, setDateFlaggedFrom] = useState("");
+  const [dateFlaggedTo, setDateFlaggedTo] = useState("");
+  const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
+
+  const toggleFilter = (name: string) => setOpenFilter(prev => prev === name ? null : name);
+
+  const parseDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split("/");
+    if (parts.length !== 3) return null;
+    return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+  };
 
   const mockIssues = [
     { 
@@ -144,24 +161,45 @@ export default function AIAnalysis() {
         <div>
           {/* Filters */}
           <div className="flex gap-2 mb-6">
-            <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-              Issue Level
-              <svg className="size-4" fill="none" viewBox="0 0 16 16">
-                <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-              Date
-              <svg className="size-4" fill="none" viewBox="0 0 16 16">
-                <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-              AI Confidence
-              <svg className="size-4" fill="none" viewBox="0 0 16 16">
-                <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+            <FilterButton
+              label="Issue Level"
+              type="checkbox"
+              options={[
+                { value: "High", label: "High" },
+                { value: "Warning", label: "Warning" },
+              ]}
+              selected={issueLevelFilter}
+              onChange={setIssueLevelFilter}
+              isOpen={openFilter === "issueLevel"}
+              onToggle={() => toggleFilter("issueLevel")}
+              onClose={() => setOpenFilter(null)}
+            />
+            <FilterButton
+              label="Date"
+              type="daterange"
+              from={dateFlaggedFrom}
+              to={dateFlaggedTo}
+              onFromChange={setDateFlaggedFrom}
+              onToChange={setDateFlaggedTo}
+              isOpen={openFilter === "date"}
+              onToggle={() => toggleFilter("date")}
+              onClose={() => setOpenFilter(null)}
+            />
+            <FilterButton
+              label="AI Confidence"
+              type="checkbox"
+              options={[
+                { value: "veryHigh", label: "Very High (90% - 100%)" },
+                { value: "high", label: "High (80% - 89%)" },
+                { value: "moderate", label: "Moderate (60% - 79%)" },
+                { value: "low", label: "Low (Below 60%)" },
+              ]}
+              selected={confidenceFilter}
+              onChange={setConfidenceFilter}
+              isOpen={openFilter === "confidence"}
+              onToggle={() => toggleFilter("confidence")}
+              onClose={() => setOpenFilter(null)}
+            />
           </div>
 
           {/* Table */}
@@ -184,7 +222,20 @@ export default function AIAnalysis() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {mockIssues.map((issue, index) => (
+                {mockIssues.filter(issue => {
+                  if (issueLevelFilter.length > 0 && !issueLevelFilter.includes(issue.level)) return false;
+                  if (dateFlaggedFrom || dateFlaggedTo) {
+                    const d = parseDate(issue.dateFlagged);
+                    if (d && dateFlaggedFrom && d < new Date(dateFlaggedFrom)) return false;
+                    if (d && dateFlaggedTo && d > new Date(dateFlaggedTo)) return false;
+                  }
+                  if (confidenceFilter.length > 0) {
+                    const v = parseInt(issue.aiConfidence);
+                    const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
+                    if (!confidenceFilter.includes(band)) return false;
+                  }
+                  return true;
+                }).map((issue, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">

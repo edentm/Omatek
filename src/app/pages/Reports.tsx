@@ -1,5 +1,6 @@
 import { useState } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
+import FilterButton from "../components/FilterButton";
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
@@ -9,6 +10,25 @@ export default function Reports() {
   const [reportContent, setReportContent] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+  // Filter state
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [dateCreatedFrom, setDateCreatedFrom] = useState("");
+  const [dateCreatedTo, setDateCreatedTo] = useState("");
+  const [dateFinalizedFrom, setDateFinalizedFrom] = useState("");
+  const [dateFinalizedTo, setDateFinalizedTo] = useState("");
+  const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
+
+  const toggleFilter = (name: string) => setOpenFilter(prev => prev === name ? null : name);
+
+  const parseDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split("/");
+    if (parts.length !== 3) return null;
+    const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+    return new Date(`${year}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+  };
 
   const defaultContent = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.`;
 
@@ -82,30 +102,56 @@ export default function Reports() {
 
       {/* Filters */}
       <div className="flex gap-2 mb-6">
-        <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Status
-          <svg className="size-4" fill="none" viewBox="0 0 16 16">
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Date Created
-          <svg className="size-4" fill="none" viewBox="0 0 16 16">
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Date Finalized
-          <svg className="size-4" fill="none" viewBox="0 0 16 16">
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <button className="h-[36px] px-4 border border-[#d0d5dd] rounded-lg flex items-center gap-2 text-[14px]">
-          Initial AI Confidence
-          <svg className="size-4" fill="none" viewBox="0 0 16 16">
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        <FilterButton
+          label="Status"
+          type="checkbox"
+          options={[
+            { value: "Finalized", label: "Finalized" },
+            { value: "Needs Approval", label: "Needs Approval" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          isOpen={openFilter === "status"}
+          onToggle={() => toggleFilter("status")}
+          onClose={() => setOpenFilter(null)}
+        />
+        <FilterButton
+          label="Date Created"
+          type="daterange"
+          from={dateCreatedFrom}
+          to={dateCreatedTo}
+          onFromChange={setDateCreatedFrom}
+          onToChange={setDateCreatedTo}
+          isOpen={openFilter === "dateCreated"}
+          onToggle={() => toggleFilter("dateCreated")}
+          onClose={() => setOpenFilter(null)}
+        />
+        <FilterButton
+          label="Date Finalized"
+          type="daterange"
+          from={dateFinalizedFrom}
+          to={dateFinalizedTo}
+          onFromChange={setDateFinalizedFrom}
+          onToChange={setDateFinalizedTo}
+          isOpen={openFilter === "dateFinalized"}
+          onToggle={() => toggleFilter("dateFinalized")}
+          onClose={() => setOpenFilter(null)}
+        />
+        <FilterButton
+          label="Initial AI Confidence"
+          type="checkbox"
+          options={[
+            { value: "veryHigh", label: "Very High (90% - 100%)" },
+            { value: "high", label: "High (80% - 89%)" },
+            { value: "moderate", label: "Moderate (60% - 79%)" },
+            { value: "low", label: "Low (Below 60%)" },
+          ]}
+          selected={confidenceFilter}
+          onChange={setConfidenceFilter}
+          isOpen={openFilter === "confidence"}
+          onToggle={() => toggleFilter("confidence")}
+          onClose={() => setOpenFilter(null)}
+        />
       </div>
 
       {/* Table */}
@@ -131,11 +177,27 @@ export default function Reports() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {mockReports.filter(report =>
-              [report.title, report.status].some(field =>
-                field.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-            ).map((report, index) => (
+            {mockReports.filter(report => {
+              if (searchQuery && ![report.title, report.status].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+              if (statusFilter.length > 0 && !statusFilter.includes(report.status)) return false;
+              if (dateCreatedFrom || dateCreatedTo) {
+                const d = parseDate(report.date);
+                if (d && dateCreatedFrom && d < new Date(dateCreatedFrom)) return false;
+                if (d && dateCreatedTo && d > new Date(dateCreatedTo)) return false;
+              }
+              if (dateFinalizedFrom || dateFinalizedTo) {
+                const d = report.finalizedDate ? parseDate(report.finalizedDate) : null;
+                if (!d) return false;
+                if (dateFinalizedFrom && d < new Date(dateFinalizedFrom)) return false;
+                if (dateFinalizedTo && d > new Date(dateFinalizedTo)) return false;
+              }
+              if (confidenceFilter.length > 0) {
+                const v = parseInt(report.aiConfidence);
+                const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
+                if (!confidenceFilter.includes(band)) return false;
+              }
+              return true;
+            }).map((report, index) => (
               <tr 
                 key={index} 
                 className="hover:bg-gray-50 cursor-pointer"
