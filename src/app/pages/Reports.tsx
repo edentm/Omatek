@@ -635,13 +635,7 @@ export default function Reports() {
                   </p>
                 </div>
 
-                <div className="flex justify-center gap-3">
-                  <button
-                    onClick={closeGenerateModal}
-                    className="h-[43px] px-5 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] hover:bg-gray-50 transition-colors"
-                  >
-                    Close
-                  </button>
+                <div className="flex justify-center">
                   <button
                     onClick={() => {
                       const newId = `FR-${String(reports.length + 1).padStart(4, '0')}-2026`;
