@@ -1,7 +1,21 @@
 import { useState, useEffect } from "react";
 import FilterButton from "../components/FilterButton";
+import { getDocuments, uploadDocument, openDocument } from "../../api";
+
+type Document = {
+  id: number;
+  title: string;
+  type: string;
+  uploadDate: string;
+  uploadedBy: string;
+  uploadedByRole: string;
+};
 
 export default function Documents() {
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [docsError, setDocsError] = useState("");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
@@ -13,11 +27,50 @@ export default function Documents() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [modalStep, setModalStep] = useState<'idle' | 'analyzing' | 'complete'>('idle');
+  const [uploadError, setUploadError] = useState("");
+
+  useEffect(() => {
+    getDocuments()
+      .then((data: unknown[]) => {
+        const mapped = (data as Record<string, unknown>[]).map((d) => ({
+          id: d.id as number,
+          title: (d.filename ?? d.title ?? d.name ?? "Untitled") as string,
+          type: ((d.file_type ?? d.type ?? "") as string).toUpperCase() || "—",
+          uploadDate: d.created_at
+            ? new Date(d.created_at as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+            : (d.upload_date as string) || "—",
+          uploadedBy: (d.uploaded_by ?? d.uploader_name ?? "") as string,
+          uploadedByRole: (d.uploader_role ?? d.role ?? "") as string,
+        }));
+        setDocuments(mapped);
+      })
+      .catch((err: Error) => setDocsError(err.message))
+      .finally(() => setLoadingDocs(false));
+  }, []);
+
+  const refreshDocuments = () => {
+    getDocuments()
+      .then((data: unknown[]) => {
+        const mapped = (data as Record<string, unknown>[]).map((d) => ({
+          id: d.id as number,
+          title: (d.filename ?? d.title ?? d.name ?? "Untitled") as string,
+          type: ((d.file_type ?? d.type ?? "") as string).toUpperCase() || "—",
+          uploadDate: d.created_at
+            ? new Date(d.created_at as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+            : (d.upload_date as string) || "—",
+          uploadedBy: (d.uploaded_by ?? d.uploader_name ?? "") as string,
+          uploadedByRole: (d.uploader_role ?? d.role ?? "") as string,
+        }));
+        setDocuments(mapped);
+      })
+      .catch(() => {});
+  };
 
   const closeModal = () => {
     setShowUploadModal(false);
     setUploadedFiles([]);
     setModalStep('idle');
+    setUploadError("");
   };
 
   const handleFileDrop = (e: React.DragEvent) => {
@@ -33,9 +86,19 @@ export default function Documents() {
     setUploadedFiles(prev => [...prev, ...incoming].slice(0, 20));
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     setModalStep('analyzing');
-    setTimeout(() => setModalStep('complete'), 3000);
+    setUploadError("");
+    try {
+      for (const file of uploadedFiles) {
+        await uploadDocument(file);
+      }
+      refreshDocuments();
+      setModalStep('complete');
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      setModalStep('idle');
+    }
   };
 
   useEffect(() => {
@@ -50,15 +113,6 @@ export default function Documents() {
     if (parts.length !== 3) return null;
     return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
   };
-
-  const mockDocuments = [
-    { title: "Q1 Financial Report 2026", type: "PDF", uploadDate: "03/31/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
-    { title: "Annual Budget Proposal", type: "Excel", uploadDate: "03/28/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
-    { title: "Expense Report - March", type: "PDF", uploadDate: "03/25/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
-    { title: "Tax Compliance Documents",  type: "PDF", uploadDate: "03/30/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator" },
-    { title: "Revenue Analysis Report", type: "Excel", uploadDate: "03/27/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
-    { title: "Cash Flow Statement", type: "PDF", uploadDate: "03/26/2026", uploadedBy: "Oladosu Teyibo", uploadedByRole: "Administrator"},
-  ];
 
   return (
     <div className="bg-white h-full w-full p-8 relative">
@@ -135,65 +189,73 @@ export default function Documents() {
         />
       </div>
 
+      {loadingDocs && <p className="text-[14px] text-[#667085] mb-4">Loading documents…</p>}
+      {docsError && <p className="text-[14px] text-[#b42318] mb-4">{docsError}</p>}
+
       {/* Table */}
-      <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Document Title
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Upload Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Uploaded By
-              </th>
-              <th className="px-6 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {mockDocuments.filter(doc => {
-              if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-              if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
-              if (uploadDateFrom || uploadDateTo) {
-                const d = parseDate(doc.uploadDate);
-                if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
-                if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
-              }
-              return true;
-            }).map((doc, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                    {doc.title}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                  {doc.type}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                  {doc.uploadDate}
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
-                  <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                      <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                </td>
+      {!loadingDocs && (
+        <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Document Title
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Upload Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Uploaded By
+                </th>
+                <th className="px-6 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {documents.filter(doc => {
+                if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+                if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
+                if (uploadDateFrom || uploadDateTo) {
+                  const d = parseDate(doc.uploadDate);
+                  if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
+                  if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
+                }
+                return true;
+              }).map((doc) => (
+                <tr key={doc.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
+                      {doc.title}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                    {doc.type}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                    {doc.uploadDate}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
+                    <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <button
+                      onClick={() => openDocument(doc.id)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="size-5" fill="none" viewBox="0 0 20 20">
+                        <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUploadModal && (
@@ -267,8 +329,12 @@ export default function Documents() {
                   </div>
                 )}
 
+                {uploadError && (
+                  <p className="text-[13px] text-[#b42318] text-center">{uploadError}</p>
+                )}
+
                 <div className="flex justify-center">
-                  <button onClick={handleUpload} className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors">
+                  <button onClick={handleUpload} disabled={uploadedFiles.length === 0} className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors disabled:opacity-60">
                     <svg className="size-4" fill="none" viewBox="0 0 20 20">
                       <path d="M10 13.333V3.333M10 3.333L6.667 6.667M10 3.333L13.333 6.667" stroke="#EAECF0" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M3.333 13.333v1.334A2.333 2.333 0 0 0 5.667 17h8.666a2.333 2.333 0 0 0 2.334-2.333v-1.334" stroke="#EAECF0" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>

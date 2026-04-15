@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
+import { getReports, finalizeReport } from "../../api";
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -72,17 +73,45 @@ export default function Reports() {
     setTimeout(() => setGenerateStep('complete'), 3500);
   };
 
-  type Report = { title: string; id: string; type: string; category: string; date: string; status: string; finalizedDate?: string; aiConfidence: string };
+  type Report = { apiId: number; title: string; id: string; type: string; category: string; date: string; status: string; finalizedDate?: string; aiConfidence: string };
 
-  const [reports, setReports] = useState<Report[]>([
-    { title: "Q1 2026 Financial Summary", id: "FR-0001-2026", type: "Quarterly Report", category: "Financial Overview", date: "03/31/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "95%" },
-    { title: "Annual Budget Forecast", id: "FR-0002-2026", type: "Budget Analysis", category: "Financial Planning", date: "03/28/2026", status: "Needs Approval", aiConfidence: "87%" },
-    { title: "Expense Reconciliation Report", id: "FR-0003-2026", type: "Expense Report", category: "Accounting", date: "03/25/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "92%" },
-    { title: "Revenue Analysis - March", id: "FR-0004-2026", type: "Revenue Report", category: "Financial Analysis", date: "03/30/2026", status: "Needs Approval", aiConfidence: "78%" },
-    { title: "Cash Flow Statement", id: "FR-0005-2026", type: "Financial Statement", category: "Treasury", date: "03/27/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "98%" },
-    { title: "Tax Compliance Review", id: "FR-0006-2026", type: "Compliance Report", category: "Tax & Legal", date: "03/26/2026", status: "Needs Approval", aiConfidence: "83%" },
-    { title: "Profit & Loss Statement", id: "FR-0007-2026", type: "Financial Statement", category: "Accounting", date: "03/29/2026", status: "Finalized", finalizedDate: "04/04/26", aiConfidence: "91%" },
-  ]);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
+  const [reportsError, setReportsError] = useState("");
+
+  useEffect(() => {
+    getReports()
+      .then((data: unknown[]) => {
+        const mapped = (data as Record<string, unknown>[]).map((r, i) => {
+          const rawStatus = (r.status ?? r.approval_status ?? "") as string;
+          const status = rawStatus.toLowerCase().includes("finalized") || rawStatus.toLowerCase().includes("approved")
+            ? "Finalized"
+            : "Needs Approval";
+          const confidence = r.ai_confidence_score ?? r.confidence ?? r.ai_confidence ?? null;
+          const confidenceStr = confidence !== null ? `${Math.round(Number(confidence) * (Number(confidence) <= 1 ? 100 : 1))}%` : "—";
+          const createdAt = r.created_at ?? r.date_created ?? r.date ?? "";
+          const finalizedAt = r.finalized_at ?? r.date_finalized ?? r.finalizedDate ?? null;
+          const formatDate = (iso: string) => {
+            const d = new Date(iso);
+            return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+          };
+          return {
+            apiId: r.id as number,
+            title: (r.title ?? r.name ?? `Report #${i + 1}`) as string,
+            id: r.report_number ? (r.report_number as string) : `FR-${String(i + 1).padStart(4, "0")}`,
+            type: (r.report_type ?? r.type ?? "") as string,
+            category: (r.category ?? "") as string,
+            date: createdAt ? formatDate(createdAt as string) : "—",
+            status,
+            finalizedDate: finalizedAt ? formatDate(finalizedAt as string) : undefined,
+            aiConfidence: confidenceStr,
+          };
+        });
+        setReports(mapped);
+      })
+      .catch((err: Error) => setReportsError(err.message))
+      .finally(() => setLoadingReports(false));
+  }, []);
 
   return (
     <div className="bg-white h-full w-full p-8 relative">
@@ -184,6 +213,9 @@ export default function Reports() {
           onClose={() => setOpenFilter(null)}
         />
       </div>
+
+      {loadingReports && <p className="text-[14px] text-[#667085] mb-4">Loading reports…</p>}
+      {reportsError && <p className="text-[14px] text-[#b42318] mb-4">{reportsError}</p>}
 
       {/* Table */}
       <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
@@ -406,7 +438,24 @@ export default function Reports() {
                       )}
                     </button>
                     {/* Sign Off Button */}
-                    <button className="h-[53px] px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2">
+                    <button
+                      onClick={async () => {
+                        if (!selectedReport || selectedReport.apiId === 0) return;
+                        try {
+                          await finalizeReport(selectedReport.apiId);
+                          const today = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+                          setReports(prev => prev.map(r =>
+                            r.apiId === selectedReport.apiId
+                              ? { ...r, status: 'Finalized', finalizedDate: today }
+                              : r
+                          ));
+                          setSelectedReport(prev => prev ? { ...prev, status: 'Finalized', finalizedDate: today } : prev);
+                        } catch {
+                          // silently fail — user can retry
+                        }
+                      }}
+                      className="h-[53px] px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2"
+                    >
                       <div className="flex items-center justify-center size-6">
                         <svg className="size-4" viewBox="0 0 20 15" fill="none">
                           <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
@@ -644,6 +693,7 @@ export default function Reports() {
                           ? `${selectedMetrics[0]}${selectedMetrics.length > 1 ? ' & More' : ''} Report`
                           : `${selectedDiscrepancyLevels.join('/')} Discrepancy Report`;
                       const newReport: Report = {
+                        apiId: 0,
                         title,
                         id: newId,
                         type: hasMetrics && hasDiscrepancies ? 'Combined Report' : hasMetrics ? 'Key Metrics Report' : 'Discrepancy Report',

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { changePassword } from "../../api";
 
 export default function Settings() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -6,8 +7,9 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
@@ -20,11 +22,19 @@ export default function Settings() {
       return;
     }
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 4000);
+    setLoading(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update password");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -94,9 +104,10 @@ export default function Settings() {
             <div className="pt-1">
               <button
                 type="submit"
-                className="h-[43px] px-6 bg-[#144430] rounded-[10px] text-[14px] font-['Figtree:Bold',sans-serif] text-white hover:bg-[#0f3324] transition-colors"
+                disabled={loading}
+                className="h-[43px] px-6 bg-[#144430] rounded-[10px] text-[14px] font-['Figtree:Bold',sans-serif] text-white hover:bg-[#0f3324] transition-colors disabled:opacity-60"
               >
-                Update password
+                {loading ? "Updating…" : "Update password"}
               </button>
             </div>
           </form>

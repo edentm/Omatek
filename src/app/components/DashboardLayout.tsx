@@ -1,12 +1,29 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
 import { Home, Brain, FileText, Files, Users, Settings, LogOut, ChevronDown } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
+import { logoutApi } from "../../api";
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Read user from localStorage (set on login)
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const userName: string = storedUser.name || "User";
+  const initials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+  const displayName = userName.split(" ")[0];
+
+  const handleLogout = async () => {
+    await logoutApi();
+    navigate("/login");
+  };
 
   return (
     <div className="bg-white flex h-screen w-full">
@@ -18,10 +35,10 @@ export default function DashboardLayout() {
           <div className="h-[77px] relative shrink-0 border-[#eaecf0] border-b-[0.8px] border-solid">
             <div className="absolute h-[59px] left-[20px] top-[8px] w-[108px]">
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <img 
-                  alt="Omatek Logo" 
-                  className="absolute h-[340%] left-[-41.03%] max-w-none top-[-117.06%] w-[185.26%]" 
-                  src={imgUntitledDesign41} 
+                <img
+                  alt="Omatek Logo"
+                  className="absolute h-[340%] left-[-41.03%] max-w-none top-[-117.06%] w-[185.26%]"
+                  src={imgUntitledDesign41}
                 />
               </div>
             </div>
@@ -38,8 +55,8 @@ export default function DashboardLayout() {
                 }`}
               >
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Home 
-                    className="size-[20px]" 
+                  <Home
+                    className="size-[20px]"
                     strokeWidth={1.66667}
                     color={isActive("/dashboard") ? "black" : "#344054"}
                   />
@@ -59,8 +76,8 @@ export default function DashboardLayout() {
                 }`}
               >
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Brain 
-                    className="size-[20px]" 
+                  <Brain
+                    className="size-[20px]"
                     strokeWidth={1.66667}
                     color="#344054"
                   />
@@ -78,8 +95,8 @@ export default function DashboardLayout() {
                 }`}
               >
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <FileText 
-                    className="size-[20px]" 
+                  <FileText
+                    className="size-[20px]"
                     strokeWidth={1.66667}
                     color="#344054"
                   />
@@ -97,8 +114,8 @@ export default function DashboardLayout() {
                 }`}
               >
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Files 
-                    className="size-[20px]" 
+                  <Files
+                    className="size-[20px]"
                     strokeWidth={1.66667}
                     color="#344054"
                   />
@@ -116,8 +133,8 @@ export default function DashboardLayout() {
                 }`}
               >
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Users 
-                    className="size-[20px]" 
+                  <Users
+                    className="size-[20px]"
                     strokeWidth={1.66667}
                     color="#344054"
                   />
@@ -135,8 +152,8 @@ export default function DashboardLayout() {
                 }`}
               >
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Settings 
-                    className="size-[20px]" 
+                  <Settings
+                    className="size-[20px]"
                     strokeWidth={1.66667}
                     color="#344054"
                   />
@@ -152,11 +169,11 @@ export default function DashboardLayout() {
           <div className="h-[187.6px] relative shrink-0">
             {/* Log out button */}
             <button
-              onClick={() => navigate("/login")}
+              onClick={handleLogout}
               className="absolute flex gap-[12px] h-[45px] items-center left-[8px] pl-[16px] rounded-[10px] top-[61.8px] w-[171.2px] hover:bg-[#e7e7e7]"
             >
-              <LogOut 
-                className="size-[20px]" 
+              <LogOut
+                className="size-[20px]"
                 strokeWidth={1.66667}
                 color="#344054"
               />
@@ -169,16 +186,16 @@ export default function DashboardLayout() {
             <div className="absolute flex flex-col h-[72.8px] items-start left-0 pt-[12.8px] px-[12px] top-[114.8px] w-[187.2px] border-[#eaecf0] border-t-[0.8px] border-solid">
               <div className="h-[48px] rounded-[10px] w-full">
                 <div className="flex items-center gap-[8px] px-[8px] h-full">
-                  <div className="bg-[#ecf3ec] rounded-full size-[32px] flex items-center justify-center">
+                  <div className="bg-[#ecf3ec] rounded-full size-[32px] flex items-center justify-center shrink-0">
                     <p className="font-['Figtree:Medium',sans-serif] font-medium leading-[21px] text-[14px] text-black">
-                      JS
+                      {initials}
                     </p>
                   </div>
-                  <p className="flex-1 font-['Figtree:Medium',sans-serif] font-medium leading-[21px] text-[14px] text-black">
-                    User Name
+                  <p className="flex-1 font-['Figtree:Medium',sans-serif] font-medium leading-[21px] text-[14px] text-black truncate">
+                    {displayName}
                   </p>
-                  <ChevronDown 
-                    className="size-[16px]" 
+                  <ChevronDown
+                    className="size-[16px] shrink-0"
                     strokeWidth={1.33333}
                     color="#667085"
                   />

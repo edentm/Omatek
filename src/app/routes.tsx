@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AIAnalysis from "./pages/AIAnalysis";
@@ -7,6 +7,12 @@ import Documents from "./pages/Documents";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import DashboardLayout from "./components/DashboardLayout";
+
+function ProtectedRoute() {
+  const token = localStorage.getItem("token");
+  if (!token) return <Navigate to="/login" replace />;
+  return <DashboardLayout />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -19,7 +25,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <DashboardLayout />,
+    element: <ProtectedRoute />,
     children: [
       {
         path: "dashboard",
