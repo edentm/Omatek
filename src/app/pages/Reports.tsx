@@ -97,7 +97,7 @@ export default function Reports() {
           };
           return {
             apiId: r.id as number,
-            title: (r.title ?? r.name ?? `Report #${i + 1}`) as string,
+            title: (r.documentName ?? r.title ?? `Report #${i + 1}`) as string,
             id: r.report_number ? (r.report_number as string) : `FR-${String(i + 1).padStart(4, "0")}`,
             type: (r.report_type ?? r.type ?? "") as string,
             category: (r.category ?? "") as string,

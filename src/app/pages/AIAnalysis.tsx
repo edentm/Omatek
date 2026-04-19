@@ -1,9 +1,28 @@
+
 import { useState, useEffect } from "react";
+import { getDiscrepancies, getIngestionLog, getAnalysisMetrics } from "../../api";
 import FilterButton from "../components/FilterButton";
 
 export default function AIAnalysis() {
   const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('keyMetrics');
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
+  const [discrepancies, setDiscrepancies] = useState<Record<string, unknown>[]>([]);
+const [ingestionLog, setIngestionLog] = useState<Record<string, unknown>[]>([]);
+const [analysisMetrics, setAnalysisMetrics] = useState<Record<string, unknown[]>>({});
+const [loadingData, setLoadingData] = useState(true);
+
+useEffect(() => {
+  Promise.all([
+    getDiscrepancies().catch(() => []),
+    getIngestionLog().catch(() => []),
+    getAnalysisMetrics().catch(() => ({})),
+  ]).then(([disc, log, metrics]) => {
+    setDiscrepancies(disc as Record<string, unknown>[]);
+    setIngestionLog(log as Record<string, unknown>[]);
+    setAnalysisMetrics(metrics as Record<string, unknown[]>);
+  }).finally(() => setLoadingData(false));
+}, []);
+
 
   // Modal + confirmation state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -263,7 +282,14 @@ export default function AIAnalysis() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {mockIssues.filter(issue => {
+                {(discrepancies as Record<string, unknown>[]).map(d => ({
+  title: (d.description ?? d.title ?? "Anomaly") as string,
+  id: d.id as string,
+  level: ((d.severity ?? d.level ?? "medium") as string).charAt(0).toUpperCase() + ((d.severity ?? d.level ?? "medium") as string).slice(1),
+  dateFlagged: d.createdAt ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—",
+  type: (d.reportId ?? "") as string,
+  aiConfidence: d.confidenceScore != null ? `${Math.round(Number(d.confidenceScore) * (Number(d.confidenceScore) <= 1 ? 100 : 1))}%` : "—",
+})).filter(issue => {
                   if (issueLevelFilter.length > 0 && !issueLevelFilter.includes(issue.level)) return false;
                   if (dateFlaggedFrom || dateFlaggedTo) {
                     const d = parseDate(issue.dateFlagged);
@@ -331,24 +357,24 @@ export default function AIAnalysis() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {mockIngestionData.map((item, index) => (
+                {(ingestionLog as Record<string, unknown>[]).map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                        {item.name}
+                        {(item.fileName ?? item.name) as string}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                      {item.numberOfDocs}
+                      {String(item.numberOfDocs ?? 1)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                      {item.uploadDate}
+                      {(item.uploadDate ?? "—") as string}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                        {item.uploadedBy}
+                     {(item.uploadedBy ?? "—") as string}
                       </div>
-                      <div className="text-[12px] text-gray-500">{item.role}</div>
+                      <div className="text-[12px] text-gray-500">{(item.fileSize ?? "—") as string}</div>
                     </td>
                   </tr>
                 ))}
