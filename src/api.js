@@ -1,2 +1,3 @@
-// This file is superseded by api.ts — do not edit here.
-// All API functions live in src/api.ts.
+// Vite resolves .js before .ts, so this file re-exports everything from api.ts.
+// All actual code lives in src/api.ts — edit there, not here.
+export * from './api.ts'
