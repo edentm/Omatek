@@ -28,6 +28,8 @@ export default defineConfig({
       // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
     },
+    // Prefer .ts over .js so that api.ts takes precedence over api.js
+    extensions: ['.mjs', '.ts', '.tsx', '.js', '.jsx', '.json'],
   },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.

@@ -285,6 +285,14 @@ export const generateCustomReport = async (body: {
   return res.json()
 }
 
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export const getUsers = async () => {
+  const res = await authFetch('/api/users')
+  if (!res.ok) throw new Error('Failed to fetch users')
+  return res.json()
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 export const changePassword = async (
