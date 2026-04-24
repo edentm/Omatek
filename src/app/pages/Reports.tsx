@@ -83,21 +83,20 @@ export default function Reports() {
     getReports()
       .then((data: unknown[]) => {
         const mapped = (data as Record<string, unknown>[]).map((r, i) => {
-          const rawStatus = (r.status ?? r.approval_status ?? "") as string;
-          const status = rawStatus.toLowerCase().includes("finalized") || rawStatus.toLowerCase().includes("approved")
-            ? "Finalized"
-            : "Needs Approval";
-          const confidence = r.ai_confidence_score ?? r.confidence ?? r.ai_confidence ?? null;
-          const confidenceStr = confidence !== null ? `${Math.round(Number(confidence) * (Number(confidence) <= 1 ? 100 : 1))}%` : "—";
-          const createdAt = r.created_at ?? r.date_created ?? r.date ?? "";
-          const finalizedAt = r.finalized_at ?? r.date_finalized ?? r.finalizedDate ?? null;
+          const isLocked = r.isLocked as boolean;
+          const rawStatus = isLocked ? "Finalized" : "Needs Approval";
+          const status = rawStatus;
+          const confidence = r.confidenceScore as number | null;
+          const confidenceStr = confidence != null ? `${Math.round(Number(confidence) * (Number(confidence) <= 1 ? 100 : 1))}%` : "—";
+          const createdAt = (r.createdAt ?? "") as string;
+          const finalizedAt = null;
           const formatDate = (iso: string) => {
             const d = new Date(iso);
             return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
           };
           return {
             apiId: r.id as number,
-            title: (r.documentName ?? r.title ?? `Report #${i + 1}`) as string,
+            title: (r.title ?? r.documentName ?? `Report #${i + 1}`) as string,
             id: r.report_number ? (r.report_number as string) : `FR-${String(i + 1).padStart(4, "0")}`,
             type: (r.report_type ?? r.type ?? "") as string,
             category: (r.category ?? "") as string,

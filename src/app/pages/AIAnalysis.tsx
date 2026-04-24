@@ -282,14 +282,14 @@ useEffect(() => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(discrepancies as Record<string, unknown>[]).map(d => ({
-  title: (d.description ?? d.title ?? "Anomaly") as string,
-  id: d.id as string,
-  level: ((d.severity ?? d.level ?? "medium") as string).charAt(0).toUpperCase() + ((d.severity ?? d.level ?? "medium") as string).slice(1),
-  dateFlagged: d.createdAt ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—",
-  type: (d.reportId ?? "") as string,
-  aiConfidence: d.confidenceScore != null ? `${Math.round(Number(d.confidenceScore) * (Number(d.confidenceScore) <= 1 ? 100 : 1))}%` : "—",
-})).filter(issue => {
+                {(discrepancies.length > 0 ? discrepancies.map((d) => ({
+                  title: (d.description ?? d.title ?? "Anomaly") as string,
+                  id: d.id as string,
+                  level: ((d.severity ?? d.level ?? "medium") as string).charAt(0).toUpperCase() + ((d.severity ?? d.level ?? "medium") as string).slice(1),
+                  dateFlagged: d.createdAt ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—",
+                  type: "",
+                  aiConfidence: d.confidenceScore != null ? `${Math.round(Number(d.confidenceScore) * (Number(d.confidenceScore) <= 1 ? 100 : 1))}%` : "—",
+                })) : mockIssues).filter(issue => {
                   if (issueLevelFilter.length > 0 && !issueLevelFilter.includes(issue.level)) return false;
                   if (dateFlaggedFrom || dateFlaggedTo) {
                     const d = parseDate(issue.dateFlagged);
@@ -357,11 +357,17 @@ useEffect(() => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(ingestionLog as Record<string, unknown>[]).map((item, index) => (
+                {(ingestionLog.length > 0 ? ingestionLog.map((d) => ({
+                  name: (d.fileName ?? d.name ?? "Document") as string,
+                  numberOfDocs: String(d.numberOfDocs ?? 1),
+                  uploadDate: (d.uploadDate ?? "—") as string,
+                  uploadedBy: (d.uploadedBy ?? "Admin") as string,
+                  role: (d.fileSize ?? "—") as string,
+                })) : mockIngestionData).map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                        {(item.fileName ?? item.name) as string}
+                        {item.name}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
@@ -374,7 +380,7 @@ useEffect(() => {
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
                      {(item.uploadedBy ?? "—") as string}
                       </div>
-                      <div className="text-[12px] text-gray-500">{(item.fileSize ?? "—") as string}</div>
+                      <div className="text-[12px] text-gray-500">{item.role}</div>
                     </td>
                   </tr>
                 ))}
