@@ -1,4 +1,4 @@
-const BASE_URL = 'https://omatek-backend.onrender.com'
+const BASE_URL = 'http://127.0.0.1:8000'
 
 // ── Core fetch helper ────────────────────────────────────────────────────────
 
