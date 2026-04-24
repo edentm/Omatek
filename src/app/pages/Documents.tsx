@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import FilterButton from "../components/FilterButton";
-import { getDocuments, uploadDocument, openDocument } from "../../api";
+import { getDocuments, uploadDocument, openDocument, pollJobStatus } from "../../api";
 
 type Document = {
   id: number;
@@ -34,13 +34,13 @@ export default function Documents() {
       .then((data: unknown[]) => {
         const mapped = (data as Record<string, unknown>[]).map((d) => ({
           id: d.id as number,
-          title: (d.filename ?? d.title ?? d.name ?? "Untitled") as string,
-          type: ((d.file_type ?? d.type ?? "") as string).toUpperCase() || "—",
-          uploadDate: d.created_at
-            ? new Date(d.created_at as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
-            : (d.upload_date as string) || "—",
-          uploadedBy: (d.uploaded_by ?? d.uploader_name ?? "") as string,
-          uploadedByRole: (d.uploader_role ?? d.role ?? "") as string,
+          title: (d.originalFilename ?? d.filename ?? "Untitled") as string,
+          type: ((d.fileType ?? d.file_type ?? "") as string).toUpperCase() || "—",
+          uploadDate: d.createdAt
+            ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+            : "—",
+          uploadedBy: (d.uploadedByName ?? d.uploadedBy ?? "Admin") as string,
+          uploadedByRole: "",
         }));
         setDocuments(mapped);
       })
@@ -53,13 +53,13 @@ export default function Documents() {
       .then((data: unknown[]) => {
         const mapped = (data as Record<string, unknown>[]).map((d) => ({
           id: d.id as number,
-          title: (d.filename ?? d.title ?? d.name ?? "Untitled") as string,
-          type: ((d.file_type ?? d.type ?? "") as string).toUpperCase() || "—",
-          uploadDate: d.created_at
-            ? new Date(d.created_at as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
-            : (d.upload_date as string) || "—",
-          uploadedBy: (d.uploaded_by ?? d.uploader_name ?? "") as string,
-          uploadedByRole: (d.uploader_role ?? d.role ?? "") as string,
+          title: (d.originalFilename ?? d.filename ?? "Untitled") as string,
+          type: ((d.fileType ?? d.file_type ?? "") as string).toUpperCase() || "—",
+          uploadDate: d.createdAt
+            ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+            : "—",
+          uploadedBy: (d.uploadedByName ?? d.uploadedBy ?? "Admin") as string,
+          uploadedByRole: "",
         }));
         setDocuments(mapped);
       })
@@ -91,7 +91,24 @@ export default function Documents() {
     setUploadError("");
     try {
       for (const file of uploadedFiles) {
-        await uploadDocument(file);
+        const { jobId } = await uploadDocument(file);
+        await new Promise<void>((resolve, reject) => {
+          const interval = setInterval(async () => {
+            try {
+              const status = await pollJobStatus(jobId);
+              if (status.status === "complete") {
+                clearInterval(interval);
+                resolve();
+              } else if (status.status === "failed") {
+                clearInterval(interval);
+                reject(new Error(status.error ?? "Analysis failed"));
+              }
+            } catch (e) {
+              clearInterval(interval);
+              reject(e);
+            }
+          }, 2000);
+        });
       }
       refreshDocuments();
       setModalStep('complete');
