@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
-import { getReports, finalizeReport } from "../../api";
+import { getReports, getReport, finalizeReport } from "../../api";
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -31,12 +31,34 @@ export default function Reports() {
     return new Date(`${year}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
   };
 
-  const defaultContent = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\n\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.`;
-
-  const openReport = (report: Report) => {
+  const openReport = async (report: Report) => {
     setSelectedReport(report);
     setIsEditing(false);
-    setReportContent(defaultContent);
+    setReportContent("Loading…");
+    if (!report.apiId) {
+      setReportContent("This report was generated locally and has not been saved yet. Use the Generate Report flow with a real document to see full content.");
+      return;
+    }
+    try {
+      const full = await getReport(report.apiId) as Record<string, unknown>;
+      const parts: string[] = [];
+      if (full.executiveSummary) parts.push(String(full.executiveSummary));
+      const anomalies = full.anomalies as Record<string, unknown>[] | null;
+      if (anomalies && anomalies.length > 0) {
+        parts.push("ANOMALIES DETECTED:\n" + anomalies.map((a, i) =>
+          `${i + 1}. [${String(a.severity ?? "").toUpperCase()}] ${String(a.title ?? "")} — ${String(a.description ?? "")}`
+        ).join("\n"));
+      }
+      const recommendations = full.recommendations as Record<string, unknown>[] | null;
+      if (recommendations && recommendations.length > 0) {
+        parts.push("RECOMMENDATIONS:\n" + recommendations.map((r, i) =>
+          `${i + 1}. [${String(r.priority ?? "").toUpperCase()}] ${String(r.title ?? "")} — ${String(r.description ?? "")}`
+        ).join("\n"));
+      }
+      setReportContent(parts.length > 0 ? parts.join("\n\n") : "No content available for this report.");
+    } catch {
+      setReportContent("Failed to load report content.");
+    }
   };
 
   const getConfidencePill = (confidence: string) => {

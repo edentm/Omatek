@@ -6,7 +6,7 @@ type User = {
   name: string;
   email: string;
   role: string;
-  is_active: boolean;
+  isActive: boolean;
 };
 
 export default function Users() {
@@ -74,11 +74,11 @@ export default function Users() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-block px-2 py-1 rounded-full text-[12px] ${
-                      user.is_active
+                      user.isActive
                         ? "bg-[#ecfdf3] text-[#027a48]"
                         : "bg-[#fef3f2] text-[#b42318]"
                     }`}>
-                      {user.is_active ? "Active" : "Inactive"}
+                      {user.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
                 </tr>

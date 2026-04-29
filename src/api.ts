@@ -203,7 +203,7 @@ export const getReports = async (params?: {
   limit?: number
 }) => {
   const query = params ? new URLSearchParams(params as Record<string, string>).toString() : ''
-  const res = await authFetch(`/api/reports${query ? `?${query}` : ''}`)
+  const res = await authFetch(`/api/reports/${query ? `?${query}` : ''}`)
   if (!res.ok) throw new Error('Failed to fetch reports')
   return res.json()
 }
