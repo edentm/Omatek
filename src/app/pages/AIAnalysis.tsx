@@ -1,27 +1,23 @@
 
 import { useState, useEffect } from "react";
-import { getDiscrepancies, getIngestionLog, getAnalysisMetrics } from "../../api";
+import { getDiscrepancies, getIngestionLog } from "../../api";
 import FilterButton from "../components/FilterButton";
 
 export default function AIAnalysis() {
   const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('keyMetrics');
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
   const [discrepancies, setDiscrepancies] = useState<Record<string, unknown>[]>([]);
-const [ingestionLog, setIngestionLog] = useState<Record<string, unknown>[]>([]);
-const [analysisMetrics, setAnalysisMetrics] = useState<Record<string, unknown[]>>({});
-const [loadingData, setLoadingData] = useState(true);
+  const [ingestionLog, setIngestionLog] = useState<Record<string, unknown>[]>([]);
 
-useEffect(() => {
-  Promise.all([
-    getDiscrepancies().catch(() => []),
-    getIngestionLog().catch(() => []),
-    getAnalysisMetrics().catch(() => ({})),
-  ]).then(([disc, log, metrics]) => {
-    setDiscrepancies(disc as Record<string, unknown>[]);
-    setIngestionLog(log as Record<string, unknown>[]);
-    setAnalysisMetrics(metrics as Record<string, unknown[]>);
-  }).finally(() => setLoadingData(false));
-}, []);
+  useEffect(() => {
+    Promise.all([
+      getDiscrepancies().catch(() => []),
+      getIngestionLog().catch(() => []),
+    ]).then(([disc, log]) => {
+      setDiscrepancies(disc as Record<string, unknown>[]);
+      setIngestionLog(log as Record<string, unknown>[]);
+    });
+  }, []);
 
 
   // Modal + confirmation state
@@ -362,7 +358,7 @@ useEffect(() => {
                   numberOfDocs: String(d.numberOfDocs ?? 1),
                   uploadDate: (d.uploadDate ?? "—") as string,
                   uploadedBy: (d.uploadedBy ?? "Admin") as string,
-                  role: (d.fileSize ?? "—") as string,
+                  role: "Administrator",
                 })) : mockIngestionData).map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
