@@ -1,4 +1,4 @@
-const BASE_URL = 'http://127.0.0.1:8000'
+const BASE_URL = 'https://omatek-backend.onrender.com'
 
 // ── Core fetch helper ────────────────────────────────────────────────────────
 
@@ -78,6 +78,12 @@ export const getDashboardCharts = async () => {
   if (!res.ok) throw new Error('Failed to fetch chart data')
   return res.json()
   // Returns: { revenueTrend, expenseTrend, healthScores }
+}
+
+export const getDashboardTrends = async () => {
+  const res = await authFetch('/api/dashboard/trends')
+  if (!res.ok) throw new Error('Failed to fetch trends')
+  return res.json()
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────
@@ -290,6 +296,39 @@ export const generateCustomReport = async (body: {
 export const getUsers = async () => {
   const res = await authFetch('/api/users')
   if (!res.ok) throw new Error('Failed to fetch users')
+  return res.json()
+}
+
+export const createUser = async (name: string, email: string, password: string, role: string, companyName?: string) => {
+  const res = await authFetch('/api/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, password, role, company_name: companyName }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as Record<string, string>).detail || 'Failed to create user')
+  }
+  return res.json()
+}
+
+export const updateUserRole = async (userId: number, role: string) => {
+  const res = await authFetch(`/api/users/${userId}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) throw new Error('Failed to update role')
+  return res.json()
+}
+
+export const deactivateUser = async (userId: number) => {
+  const res = await authFetch(`/api/users/${userId}/deactivate`, { method: 'PATCH' })
+  if (!res.ok) throw new Error('Failed to deactivate user')
+  return res.json()
+}
+
+export const activateUser = async (userId: number) => {
+  const res = await authFetch(`/api/users/${userId}/activate`, { method: 'PATCH' })
+  if (!res.ok) throw new Error('Failed to activate user')
   return res.json()
 }
 
