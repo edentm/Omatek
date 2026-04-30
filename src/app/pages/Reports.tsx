@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
-import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
+import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, downloadReportPresentation, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -17,6 +17,11 @@ export default function Reports() {
   const [scorecardLoading, setScorecardLoading] = useState(false);
   const [fraudLoading, setFraudLoading] = useState(false);
   const [fullReportData, setFullReportData] = useState<Record<string, unknown> | null>(null);
+
+  // Per-report cache so switching between reports never re-calls the API for data already fetched
+  const reportDataCache = useRef<Map<number, Record<string, unknown>>>(new Map());
+  const scorecardCache = useRef<Map<number, Record<string, unknown>>>(new Map());
+  const fraudScoreCache = useRef<Map<number, Record<string, unknown>>>(new Map());
 
   // Filter state
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -40,50 +45,66 @@ export default function Reports() {
   const openReport = async (report: Report) => {
     setSelectedReport(report);
     setIsEditing(false);
-    setReportContent("Loading…");
+    setActiveReportTab('summary');
+
     if (!report.apiId) {
-      setReportContent("This report was generated locally and has not been saved yet. Use the Generate Report flow with a real document to see full content.");
-      return;
-    }
-    try {
-      const full = await getReport(report.apiId) as Record<string, unknown>;
-      const parts: string[] = [];
-      if (full.executiveSummary) parts.push(String(full.executiveSummary));
-      const anomalies = full.anomalies as Record<string, unknown>[] | null;
-      if (anomalies && anomalies.length > 0) {
-        parts.push("ANOMALIES DETECTED:\n" + anomalies.map((a, i) =>
-          `${i + 1}. [${String(a.severity ?? "").toUpperCase()}] ${String(a.title ?? "")} — ${String(a.description ?? "")}`
-        ).join("\n"));
-      }
-      const recommendations = full.recommendations as Record<string, unknown>[] | null;
-      if (recommendations && recommendations.length > 0) {
-        parts.push("RECOMMENDATIONS:\n" + recommendations.map((r, i) =>
-          `${i + 1}. [${String(r.priority ?? "").toUpperCase()}] ${String(r.title ?? "")} — ${String(r.description ?? "")}`
-        ).join("\n"));
-      }
-      setReportContent(parts.length > 0 ? parts.join("\n\n") : "No content available for this report.");
-      setFullReportData(full);
-      setActiveReportTab('summary');
+      setReportContent("No report data. Use Generate Report with a real document.");
+      setFullReportData(null);
       setScorecard(null);
       setFraudScore(null);
+      return;
+    }
+
+    // Restore cached scorecard/fraud for this report instantly
+    setScorecard(scorecardCache.current.get(report.apiId) ?? null);
+    setFraudScore(fraudScoreCache.current.get(report.apiId) ?? null);
+
+    // Use cached full report data if available
+    const cached = reportDataCache.current.get(report.apiId);
+    if (cached) {
+      setFullReportData(cached);
+      setReportContent("");
+      return;
+    }
+
+    setReportContent("Loading…");
+    setFullReportData(null);
+    try {
+      const full = await getReport(report.apiId) as Record<string, unknown>;
+      reportDataCache.current.set(report.apiId, full);
+      setFullReportData(full);
+      setReportContent("");
     } catch {
       setReportContent("Failed to load report content.");
     }
   };
 
   const loadScorecard = async () => {
-    if (!selectedReport || !selectedReport.apiId || scorecard) return;
+    if (!selectedReport || !selectedReport.apiId) return;
+    // Already loaded for this report
+    if (scorecardCache.current.has(selectedReport.apiId)) {
+      setScorecard(scorecardCache.current.get(selectedReport.apiId)!);
+      return;
+    }
     setScorecardLoading(true);
     try {
       const result = await getScorecard(selectedReport.apiId) as Record<string, unknown>;
+      scorecardCache.current.set(selectedReport.apiId, result);
       setScorecard(result);
     } catch { /* silently fail */ } finally { setScorecardLoading(false); }
   };
+
   const loadFraudScore = async () => {
-    if (!selectedReport || !selectedReport.apiId || fraudScore) return;
+    if (!selectedReport || !selectedReport.apiId) return;
+    // Already loaded for this report
+    if (fraudScoreCache.current.has(selectedReport.apiId)) {
+      setFraudScore(fraudScoreCache.current.get(selectedReport.apiId)!);
+      return;
+    }
     setFraudLoading(true);
     try {
       const result = await getFraudScore(selectedReport.apiId) as Record<string, unknown>;
+      fraudScoreCache.current.set(selectedReport.apiId, result);
       setFraudScore(result);
     } catch { /* silently fail */ } finally { setFraudLoading(false); }
   };
@@ -447,9 +468,18 @@ export default function Reports() {
                         className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
                       >
                         <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
-                          <path d="M2.5 3.333h15M2.5 10h15M2.5 16.667h15" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round"/>
+                          <path d="M10 2.5C5.858 2.5 2.5 5.858 2.5 10s3.358 7.5 7.5 7.5 7.5-3.358 7.5-7.5S14.142 2.5 10 2.5zm0 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M10 6.667v6.666M7.5 10h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                         </svg>
                         View Online
+                      </button>
+                      <button
+                        onClick={() => downloadReportPresentation(selectedReport.apiId)}
+                        className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
+                      >
+                        <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
+                          <path d="M2.5 3.333h15M2.5 10h15M2.5 16.667h15" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round"/>
+                        </svg>
+                        Download Report
                       </button>
                     </>
                   )}

@@ -267,7 +267,29 @@ export const exportReportPresentation = async (id: number) => {
   const html = await res.text()
   const blob = new Blob([html], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
-  window.open(url, '_blank')
+  // Open in new tab — revoke after a delay to allow the tab to load
+  const tab = window.open(url, '_blank')
+  if (!tab) {
+    // Popup blocked — fallback to download
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `omatek-report-${id}.html`
+    a.click()
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
+}
+
+export const downloadReportPresentation = async (id: number) => {
+  const res = await authFetch(`/api/reports/${id}/export/presentation`)
+  if (!res.ok) throw new Error('Failed to download presentation')
+  const html = await res.text()
+  const blob = new Blob([html], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `omatek-report-${id}.html`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
 }
 
 export const generateCustomReport = async (body: {
