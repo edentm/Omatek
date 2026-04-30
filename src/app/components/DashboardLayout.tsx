@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { Home, Brain, FileText, Files, Users, Settings, LogOut, ChevronDown, MessageSquare } from "lucide-react";
+import { Home, Brain, FileText, Files, Users, Settings, LogOut, MessageSquare } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi } from "../../api";
 
@@ -125,25 +125,6 @@ export default function DashboardLayout() {
                 </div>
               </button>
 
-              {/* Users */}
-              <button
-                onClick={() => navigate("/users")}
-                className={`h-[45px] rounded-[10px] w-full ${
-                  isActive("/users") ? "bg-[#e7e7e7]" : ""
-                }`}
-              >
-                <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Users
-                    className="size-[20px]"
-                    strokeWidth={1.66667}
-                    color="#344054"
-                  />
-                  <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[21px] text-[#344054] text-[14px]">
-                    Users
-                  </p>
-                </div>
-              </button>
-
               {/* Chat */}
               <button
                 onClick={() => navigate("/chat")}
@@ -159,6 +140,25 @@ export default function DashboardLayout() {
                   />
                   <p className={`font-['Figtree:Regular',sans-serif] font-normal leading-[21px] text-[14px] ${isActive("/chat") ? "text-black" : "text-[#344054]"}`}>
                     Ask AI
+                  </p>
+                </div>
+              </button>
+
+              {/* Users */}
+              <button
+                onClick={() => navigate("/users")}
+                className={`h-[45px] rounded-[10px] w-full ${
+                  isActive("/users") ? "bg-[#e7e7e7]" : ""
+                }`}
+              >
+                <div className="flex items-center gap-[12px] pl-[16px]">
+                  <Users
+                    className="size-[20px]"
+                    strokeWidth={1.66667}
+                    color="#344054"
+                  />
+                  <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[21px] text-[#344054] text-[14px]">
+                    Users
                   </p>
                 </div>
               </button>
@@ -213,11 +213,6 @@ export default function DashboardLayout() {
                   <p className="flex-1 font-['Figtree:Medium',sans-serif] font-medium leading-[21px] text-[14px] text-black truncate">
                     {displayName}
                   </p>
-                  <ChevronDown
-                    className="size-[16px] shrink-0"
-                    strokeWidth={1.33333}
-                    color="#667085"
-                  />
                 </div>
               </div>
             </div>
