@@ -74,7 +74,7 @@ export default function Chat() {
       const res = await askPlatform(text, selectedDocIds) as Record<string, unknown>;
       const answer = (res.answer ?? res.response ?? res.message ?? JSON.stringify(res)) as string;
       const tokensUsed = res.tokensUsed as number | undefined;
-      const sourceRef = res.source_reference as string | undefined;
+      const sourceRef = res.sourceReference as string | undefined;
       setMessages(prev => [...prev, { role: "assistant", text: answer, tokensUsed, sourceRef }]);
       if (tokensUsed) setSessionTokens(prev => prev + tokensUsed);
     } catch (err) {

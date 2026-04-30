@@ -10,6 +10,11 @@ export default function Reports() {
   const [isEditing, setIsEditing] = useState(false);
   const [reportContent, setReportContent] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState<'summary' | 'scorecard' | 'fraud'>('summary');
   const [scorecard, setScorecard] = useState<Record<string, unknown> | null>(null);
@@ -404,7 +409,7 @@ export default function Reports() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {reports.filter(report => {
-              if (searchQuery && ![report.title, report.status].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+              if (debouncedSearch && ![report.title, report.status].some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()))) return false;
               if (statusFilter.length > 0 && !statusFilter.includes(report.status)) return false;
               if (dateCreatedFrom || dateCreatedTo) {
                 const d = parseDate(report.date);

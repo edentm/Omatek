@@ -16,10 +16,20 @@ const authFetch = async (url: string, options: RequestInit = {}) => {
     headers['Content-Type'] = 'application/json'
   }
 
-  return fetch(`${BASE_URL}${url}`, {
+  const res = await fetch(`${BASE_URL}${url}`, {
     ...options,
     headers,
   })
+
+  // Session expired — clear state and redirect to login
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    window.location.href = '/login'
+    throw new Error('Session expired. Please log in again.')
+  }
+
+  return res
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
