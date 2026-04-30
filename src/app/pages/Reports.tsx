@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
-import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, downloadReportPresentation, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
+import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -22,6 +22,52 @@ export default function Reports() {
   const reportDataCache = useRef<Map<number, Record<string, unknown>>>(new Map());
   const scorecardCache = useRef<Map<number, Record<string, unknown>>>(new Map());
   const fraudScoreCache = useRef<Map<number, Record<string, unknown>>>(new Map());
+
+  // Export modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  const SECTION_OPTIONS = [
+    { key: "cover",           label: "Cover Page" },
+    { key: "summary",         label: "Executive Summary" },
+    { key: "metrics",         label: "Key Metrics" },
+    { key: "scorecard",       label: "Health Scorecard" },
+    { key: "indicators",      label: "Performance Indicators" },
+    { key: "anomalies",       label: "Anomalies Detected" },
+    { key: "recommendations", label: "Recommendations" },
+    { key: "cert",            label: "Report Certification" },
+  ];
+  const [selectedSections, setSelectedSections] = useState<string[]>(SECTION_OPTIONS.map(s => s.key));
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const availableMetricKeys: string[] = fullReportData?.keyMetrics
+    ? Object.keys(fullReportData.keyMetrics as Record<string, unknown>)
+    : [];
+
+  const toggleSection = (key: string) =>
+    setSelectedSections(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+
+  const toggleMetric = (key: string) =>
+    setSelectedMetrics(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+
+  const openExportModal = () => {
+    // Pre-select all available metrics
+    setSelectedMetrics(availableMetricKeys);
+    setShowExportModal(true);
+  };
+
+  const handleExport = async () => {
+    if (!selectedReport || !selectedReport.apiId) return;
+    setExportLoading(true);
+    try {
+      await exportReportPresentation(
+        selectedReport.apiId,
+        selectedSections,
+        selectedMetrics.length > 0 ? selectedMetrics : undefined,
+      );
+    } catch { /* silently fail */ }
+    setExportLoading(false);
+    setShowExportModal(false);
+  };
 
   // Filter state
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -464,22 +510,13 @@ export default function Reports() {
                         Download CSV
                       </button>
                       <button
-                        onClick={() => exportReportPresentation(selectedReport.apiId)}
-                        className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
+                        onClick={openExportModal}
+                        className="flex items-center gap-1.5 h-[32px] px-3 bg-[#144430] rounded-lg text-[12px] text-white hover:bg-[#0f3324] transition-colors"
                       >
                         <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
-                          <path d="M10 2.5C5.858 2.5 2.5 5.858 2.5 10s3.358 7.5 7.5 7.5 7.5-3.358 7.5-7.5S14.142 2.5 10 2.5zm0 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M10 6.667v6.666M7.5 10h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                          <path d="M10 2.5L12.09 7.26L17.5 7.64L13.63 11L14.82 16.25L10 13.5L5.18 16.25L6.37 11L2.5 7.64L7.91 7.26L10 2.5Z" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                        View Online
-                      </button>
-                      <button
-                        onClick={() => downloadReportPresentation(selectedReport.apiId)}
-                        className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
-                      >
-                        <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
-                          <path d="M2.5 3.333h15M2.5 10h15M2.5 16.667h15" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round"/>
-                        </svg>
-                        Download Report
+                        Export as PDF
                       </button>
                     </>
                   )}
@@ -776,6 +813,106 @@ export default function Reports() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Export PDF Modal */}
+      {showExportModal && selectedReport && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowExportModal(false)} />
+          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[520px] mx-4 p-8 flex flex-col gap-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[20px] text-black">Export as PDF</h2>
+                <p className="text-[13px] text-[#667085] mt-1">Choose what to include in the report</p>
+              </div>
+              <button onClick={() => setShowExportModal(false)} className="text-[#667085] hover:text-black">
+                <svg className="size-5" fill="none" viewBox="0 0 20 20"><path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            </div>
+
+            {/* Sections */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054]">Report Sections</p>
+                <button
+                  onClick={() => setSelectedSections(
+                    selectedSections.length === SECTION_OPTIONS.length ? [] : SECTION_OPTIONS.map(s => s.key)
+                  )}
+                  className="text-[12px] text-[#144430] font-medium hover:underline"
+                >
+                  {selectedSections.length === SECTION_OPTIONS.length ? "Deselect all" : "Select all"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {SECTION_OPTIONS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => toggleSection(key)}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-[8px] border text-left transition-colors ${
+                      selectedSections.includes(key)
+                        ? "bg-[#f0f9f4] border-[#144430]"
+                        : "bg-white border-[#d0d5dd] hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className={`size-4 rounded border flex items-center justify-center shrink-0 ${
+                      selectedSections.includes(key) ? "bg-[#144430] border-[#144430]" : "border-[#d0d5dd]"
+                    }`}>
+                      {selectedSections.includes(key) && (
+                        <svg className="size-2.5" viewBox="0 0 10 10" fill="none"><path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      )}
+                    </div>
+                    <span className="text-[13px] text-[#344054]">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Metrics filter */}
+            {availableMetricKeys.length > 0 && selectedSections.includes("metrics") && (
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054]">Metrics to Include</p>
+                  <button
+                    onClick={() => setSelectedMetrics(
+                      selectedMetrics.length === availableMetricKeys.length ? [] : [...availableMetricKeys]
+                    )}
+                    className="text-[12px] text-[#144430] font-medium hover:underline"
+                  >
+                    {selectedMetrics.length === availableMetricKeys.length ? "Deselect all" : "Select all"}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto">
+                  {availableMetricKeys.map(key => (
+                    <button
+                      key={key}
+                      onClick={() => toggleMetric(key)}
+                      className={`h-[28px] px-3 rounded-full border text-[12px] font-medium transition-colors ${
+                        selectedMetrics.includes(key)
+                          ? "bg-[#144430] border-[#144430] text-white"
+                          : "bg-white border-[#d0d5dd] text-[#344054] hover:bg-gray-50"
+                      }`}
+                    >
+                      {key.replace(/_/g, " ")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button onClick={() => setShowExportModal(false)} className="h-[40px] px-5 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={selectedSections.length === 0 || exportLoading}
+                className="h-[40px] px-6 bg-[#144430] rounded-[10px] text-[14px] text-white font-medium hover:bg-[#0f3324] disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                {exportLoading ? "Opening…" : "Generate & Download PDF"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

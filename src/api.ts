@@ -143,7 +143,6 @@ export const downloadDocument = async (id: number) => {
   window.open(data.downloadUrl, '_blank')
 }
 
-// Backward-compat alias
 export const openDocument = downloadDocument
 
 export const deleteDocument = async (id: number) => {
@@ -261,35 +260,27 @@ export const exportReportCSV = async (id: number) => {
   a.click()
 }
 
-export const exportReportPresentation = async (id: number) => {
-  const res = await authFetch(`/api/reports/${id}/export/presentation`)
+export const exportReportPresentation = async (
+  id: number,
+  sections?: string[],
+  metrics?: string[],
+) => {
+  const params = new URLSearchParams()
+  if (sections && sections.length > 0) params.set('sections', sections.join(','))
+  if (metrics && metrics.length > 0) params.set('metrics', metrics.join(','))
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const res = await authFetch(`/api/reports/${id}/export/presentation${query}`)
   if (!res.ok) throw new Error('Failed to export presentation')
   const html = await res.text()
   const blob = new Blob([html], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
-  // Open in new tab — revoke after a delay to allow the tab to load
+  // Open in new tab — html2pdf.js inside the page auto-downloads as PDF
   const tab = window.open(url, '_blank')
   if (!tab) {
-    // Popup blocked — fallback to download
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `omatek-report-${id}.html`
-    a.click()
+    // Popup blocked — open inline
+    window.location.href = url
   }
-  setTimeout(() => URL.revokeObjectURL(url), 60000)
-}
-
-export const downloadReportPresentation = async (id: number) => {
-  const res = await authFetch(`/api/reports/${id}/export/presentation`)
-  if (!res.ok) throw new Error('Failed to download presentation')
-  const html = await res.text()
-  const blob = new Blob([html], { type: 'text/html' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `omatek-report-${id}.html`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 10000)
+  setTimeout(() => URL.revokeObjectURL(url), 120000)
 }
 
 export const generateCustomReport = async (body: {
