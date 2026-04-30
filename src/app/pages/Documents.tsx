@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import FilterButton from "../components/FilterButton";
-import { getDocuments, uploadDocument, openDocument, pollJobStatus } from "../../api";
+import { getDocuments, uploadDocument, openDocument, pollJobStatus, deleteDocument } from "../../api";
 
 type Document = {
   id: number;
@@ -28,6 +28,10 @@ export default function Documents() {
   const [isDragging, setIsDragging] = useState(false);
   const [modalStep, setModalStep] = useState<'idle' | 'analyzing' | 'complete'>('idle');
   const [uploadError, setUploadError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [docToast, setDocToast] = useState("");
+  const showDocToast = (msg: string) => { setDocToast(msg); setTimeout(() => setDocToast(""), 3000); };
 
   useEffect(() => {
     getDocuments()
@@ -121,6 +125,17 @@ export default function Documents() {
   useEffect(() => {
     if (!showUploadModal) setModalStep('idle');
   }, [showUploadModal]);
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await deleteDocument(id);
+      setDocuments(prev => prev.filter(d => d.id !== id));
+      setConfirmDelete(null);
+      showDocToast("Document deleted.");
+    } catch { showDocToast("Failed to delete."); }
+    finally { setDeletingId(null); }
+  };
 
   const toggleFilter = (name: string) => setOpenFilter(prev => prev === name ? null : name);
 
@@ -231,48 +246,87 @@ export default function Documents() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {documents.filter(doc => {
-                if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-                if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
-                if (uploadDateFrom || uploadDateTo) {
-                  const d = parseDate(doc.uploadDate);
-                  if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
-                  if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
+              {(() => {
+                const filtered = documents.filter(doc => {
+                  if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+                  if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
+                  if (uploadDateFrom || uploadDateTo) {
+                    const d = parseDate(doc.uploadDate);
+                    if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
+                    if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
+                  }
+                  return true;
+                });
+                if (filtered.length === 0) {
+                  return <tr><td colSpan={5} className="px-6 py-12 text-center text-[14px] text-[#667085]">No documents found. Upload one to get started.</td></tr>;
                 }
-                return true;
-              }).map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                      {doc.title}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                    {doc.type}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                    {doc.uploadDate}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
-                    <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button
-                      onClick={() => openDocument(doc.id)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                        <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                return filtered.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
+                        {doc.title}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                      {doc.type}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                      {doc.uploadDate}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
+                      <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openDocument(doc.id)}
+                          className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
+                        >
+                          <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Open
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(doc.id)}
+                          className="flex items-center gap-1.5 h-[32px] px-3 border border-[#fecdca] rounded-lg text-[12px] text-[#b42318] hover:bg-[#fef3f2] transition-colors"
+                        >
+                          <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M2.5 5H17.5M15.8333 5L15 16.6667C15 17.1269 14.8127 17.5681 14.4794 17.8933C14.1461 18.2185 13.6938 18.4007 13.2222 18.4007H6.77778C6.30618 18.4007 5.85395 18.2185 5.52063 17.8933C5.1873 17.5681 5 17.1269 5 16.6667L4.16667 5M7.5 5V3.33333C7.5 3.11232 7.5878 2.90036 7.74408 2.74408C7.90036 2.5878 8.11232 2.5 8.33333 2.5H11.6667C11.8877 2.5 12.0996 2.5878 12.2559 2.74408C12.4122 2.90036 12.5 3.11232 12.5 3.33333V5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ));
+              })()}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Confirm Delete Dialog */}
+      {confirmDelete !== null && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDelete(null)} />
+          <div className="relative bg-white rounded-[16px] shadow-xl p-8 max-w-[400px] w-full mx-4 flex flex-col gap-4">
+            <h3 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black">Delete Document?</h3>
+            <p className="text-[14px] text-[#475467]">This will permanently delete the document and its report. This action cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmDelete(null)} className="h-[40px] px-5 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] hover:bg-gray-50">Cancel</button>
+              <button onClick={() => handleDelete(confirmDelete)} disabled={deletingId === confirmDelete} className="h-[40px] px-5 bg-[#b42318] rounded-[10px] text-[14px] text-white hover:bg-[#922012] disabled:opacity-60">
+                {deletingId === confirmDelete ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Doc Toast */}
+      <div className={`fixed top-6 right-6 z-[2000] transition-all duration-300 ${docToast ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'}`}>
+        <div className="bg-[#ecfdf3] border border-[#a9efc5] rounded-[12px] shadow-lg px-5 py-3 flex items-center gap-3 min-w-[260px]">
+          <svg className="size-4 text-[#027a48] shrink-0" fill="none" viewBox="0 0 20 20"><path d="M16.667 5L7.5 14.167 3.333 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <p className="text-[13px] text-black">{docToast}</p>
+        </div>
+      </div>
 
       {/* Upload Modal */}
       {showUploadModal && (
