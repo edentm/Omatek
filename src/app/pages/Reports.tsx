@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
-import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, generateCustomReport, getDocuments } from "../../api";
+import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -11,6 +11,12 @@ export default function Reports() {
   const [reportContent, setReportContent] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [activeReportTab, setActiveReportTab] = useState<'summary' | 'scorecard' | 'fraud'>('summary');
+  const [scorecard, setScorecard] = useState<Record<string, unknown> | null>(null);
+  const [fraudScore, setFraudScore] = useState<Record<string, unknown> | null>(null);
+  const [scorecardLoading, setScorecardLoading] = useState(false);
+  const [fraudLoading, setFraudLoading] = useState(false);
+  const [fullReportData, setFullReportData] = useState<Record<string, unknown> | null>(null);
 
   // Filter state
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -56,9 +62,30 @@ export default function Reports() {
         ).join("\n"));
       }
       setReportContent(parts.length > 0 ? parts.join("\n\n") : "No content available for this report.");
+      setFullReportData(full);
+      setActiveReportTab('summary');
+      setScorecard(null);
+      setFraudScore(null);
     } catch {
       setReportContent("Failed to load report content.");
     }
+  };
+
+  const loadScorecard = async () => {
+    if (!selectedReport || !selectedReport.apiId || scorecard) return;
+    setScorecardLoading(true);
+    try {
+      const result = await getScorecard(selectedReport.apiId) as Record<string, unknown>;
+      setScorecard(result);
+    } catch { /* silently fail */ } finally { setScorecardLoading(false); }
+  };
+  const loadFraudScore = async () => {
+    if (!selectedReport || !selectedReport.apiId || fraudScore) return;
+    setFraudLoading(true);
+    try {
+      const result = await getFraudScore(selectedReport.apiId) as Record<string, unknown>;
+      setFraudScore(result);
+    } catch { /* silently fail */ } finally { setFraudLoading(false); }
   };
 
   const getConfidencePill = (confidence: string) => {
@@ -379,113 +406,278 @@ export default function Reports() {
           {isPanelExpanded && (
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="h-[68.8px] border-b border-[#eaecf0] px-6 flex items-center justify-between">
-                <div className="flex gap-3">
-                  {/* Double chevron expand/collapse button */}
+              <div className="border-b border-[#eaecf0] px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {/* Expand/collapse */}
                   <button
                     onClick={() => setIsFullWidth(!isFullWidth)}
-                    className="size-5 text-[#667085] hover:text-gray-800"
+                    title={isFullWidth ? "Collapse panel" : "Expand panel"}
+                    className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
                   >
-                    <svg className="size-full" fill="none" viewBox="0 0 20 20">
+                    <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
                       {isFullWidth ? (
                         <>
-                          {/* Double chevron right — collapse */}
                           <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
                           <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
                         </>
                       ) : (
                         <>
-                          {/* Double chevron left — expand */}
                           <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
                           <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
                         </>
                       )}
                     </svg>
+                    {isFullWidth ? "Collapse" : "Expand"}
                   </button>
-                  {/* Download buttons */}
+
+                  {/* Action buttons — only for real reports */}
                   {selectedReport && selectedReport.apiId > 0 && (
                     <>
                       <button
-                        title="Download CSV"
                         onClick={() => exportReportCSV(selectedReport.apiId)}
-                        className="size-5 text-[#667085] hover:text-gray-800"
+                        className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
                       >
-                        <svg className="size-full" fill="none" viewBox="0 0 20 20">
+                        <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
                           <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5M5.83333 8.33333L10 12.5M10 12.5L14.1667 8.33333M10 12.5V2.5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
+                        Download CSV
                       </button>
                       <button
-                        title="View Full Presentation"
                         onClick={() => exportReportPresentation(selectedReport.apiId)}
-                        className="size-5 text-[#667085] hover:text-gray-800"
+                        className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
                       >
-                        <svg className="size-full" fill="none" viewBox="0 0 20 20">
+                        <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
                           <path d="M2.5 3.333h15M2.5 10h15M2.5 16.667h15" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round"/>
                         </svg>
+                        View Online
                       </button>
                     </>
                   )}
                 </div>
+
                 {/* Close button */}
                 <button
                   onClick={() => { setSelectedReport(null); setIsFullWidth(false); setIsEditing(false); }}
-                  className="size-5 text-[#667085] hover:text-gray-800"
+                  className="flex items-center gap-1.5 h-[32px] px-3 rounded-lg text-[12px] text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
                 >
-                  <svg className="size-full" fill="none" viewBox="0 0 20 20">
+                  <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
                     <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
+                  Close
                 </button>
               </div>
 
               {/* Content */}
-              <div
-                className="flex-1 overflow-y-auto px-6 pt-6 pb-24"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
+              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-24" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {/* Report Title and Status */}
-                <div className="mb-6">
+                <div className="mb-4">
                   <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black mb-2">
                     {selectedReport.title}
                   </h2>
                   <div className="flex gap-2 text-[12px] text-[#52565c] mb-3">
                     <span>Date Generated: {selectedReport.date}</span>
-                    <span>Type: {selectedReport.type}</span>
                   </div>
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 flex-wrap mb-4">
                     <span className="text-[12px] text-[#52565c]">AI Confidence:</span>
                     {(() => { const p = getConfidencePill(selectedReport.aiConfidence); return (
-                      <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
-                        {p.label}
-                      </span>
+                      <span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span>
                     ); })()}
-                    <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Bold',sans-serif] font-bold ${
-                      selectedReport.status === "Finalized"
-                        ? "bg-[#ecfdf3] text-[#027a48]"
-                        : "bg-[#e8f0fe] text-[#1a56db]"
-                    }`}>
+                    <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-bold ${selectedReport.status === "Finalized" ? "bg-[#ecfdf3] text-[#027a48]" : "bg-[#e8f0fe] text-[#1a56db]"}`}>
                       {selectedReport.status === "Finalized" ? "Finalized" : "Needs Approval"}
                     </span>
-                    {selectedReport.status === "Finalized" && selectedReport.finalizedDate && (
-                      <span className="text-[12px] text-[#027a48]">
-                        Date Finalized: {selectedReport.finalizedDate}
-                      </span>
-                    )}
                   </div>
+                  {/* Health score badge */}
+                  {fullReportData?.healthScore != null && (
+                    <div className="flex items-center gap-3 bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4 mb-4">
+                      <div className="text-[48px] font-['Figtree:Medium',sans-serif] font-medium leading-none" style={{
+                        color: Number(fullReportData.healthScore) >= 70 ? '#027a48' : Number(fullReportData.healthScore) >= 40 ? '#dc6803' : '#b42318'
+                      }}>{String(fullReportData.healthScore)}</div>
+                      <div>
+                        <div className="text-[11px] text-[#667085] uppercase tracking-wider font-semibold">Health Score</div>
+                        <div className="text-[15px] font-semibold" style={{
+                          color: Number(fullReportData.healthScore) >= 70 ? '#027a48' : Number(fullReportData.healthScore) >= 40 ? '#dc6803' : '#b42318'
+                        }}>{String(fullReportData.healthRating ?? '')}</div>
+                      </div>
+                      <div className="flex-1 ml-2">
+                        <div className="w-full bg-[#eaecf0] rounded-full h-2">
+                          <div className="h-2 rounded-full transition-all" style={{
+                            width: `${fullReportData.healthScore}%`,
+                            background: Number(fullReportData.healthScore) >= 70 ? '#027a48' : Number(fullReportData.healthScore) >= 40 ? '#dc6803' : '#b42318'
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Body content */}
-                {isEditing ? (
-                  <textarea
-                    value={reportContent}
-                    onChange={(e) => setReportContent(e.target.value)}
-                    className="w-full h-full min-h-[400px] text-[14px] text-[#475467] leading-[22.75px] border border-[#d0d5dd] rounded-lg px-4 py-3 resize-none focus:outline-none focus:border-[#667085] bg-[#f9fafb]"
-                    style={{ height: 'calc(100vh - 320px)' }}
-                  />
-                ) : (
-                  <div className="text-[14px] text-[#475467] space-y-4 leading-[22.75px]">
-                    {reportContent.split("\n\n").map((para, i) => (
-                      <p key={i}>{para}</p>
-                    ))}
+                {/* Tabs */}
+                {selectedReport.apiId > 0 && (
+                  <div className="border-b border-[#eaecf0] mb-4">
+                    <div className="flex gap-1">
+                      {([['summary','Summary'],['scorecard','Scorecard'],['fraud','Fraud Score']] as const).map(([tab, label]) => (
+                        <button key={tab} onClick={() => {
+                          setActiveReportTab(tab);
+                          if (tab === 'scorecard') loadScorecard();
+                          if (tab === 'fraud') loadFraudScore();
+                        }} className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeReportTab === tab ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary tab */}
+                {activeReportTab === 'summary' && (
+                  <div className="flex flex-col gap-4">
+                    {fullReportData?.executiveSummary && (
+                      <div>
+                        <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-2">Executive Summary</div>
+                        <p className="text-[13px] text-[#475467] leading-[22px]">{String(fullReportData.executiveSummary)}</p>
+                      </div>
+                    )}
+                    {fullReportData?.keyMetrics && Object.keys(fullReportData.keyMetrics as object).length > 0 && (
+                      <div>
+                        <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-2">Key Metrics</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {Object.entries(fullReportData.keyMetrics as Record<string, unknown>).map(([k, v]) => (
+                            <div key={k} className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-3">
+                              <div className="text-[10px] text-[#667085] uppercase tracking-wider mb-1">{k.replace(/_/g,' ')}</div>
+                              <div className="text-[13px] font-semibold text-black">{String(v)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {Array.isArray(fullReportData?.anomalies) && (fullReportData!.anomalies as unknown[]).length > 0 && (
+                      <div>
+                        <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-2">Anomalies ({(fullReportData!.anomalies as unknown[]).length})</div>
+                        <div className="flex flex-col gap-2">
+                          {(fullReportData!.anomalies as Record<string, unknown>[]).map((a, i) => {
+                            const sev = String(a.severity ?? '').toLowerCase();
+                            const colors = { high: 'bg-[#fef2f2] border-[#fca5a5] text-[#991b1b]', medium: 'bg-[#fffbeb] border-[#fcd34d] text-[#92400e]', low: 'bg-[#f9fafb] border-[#e5e7eb] text-[#374151]' };
+                            const c = colors[sev as keyof typeof colors] ?? colors.low;
+                            return (
+                              <div key={i} className={`border rounded-[8px] p-3 ${c.split(' ').slice(0,2).join(' ')}`}>
+                                <div className="flex justify-between items-start mb-1">
+                                  <div className="text-[13px] font-semibold text-[#1d2939]">{String(a.title ?? '')}</div>
+                                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c}`}>{String(a.severity ?? '')}</span>
+                                </div>
+                                <div className="text-[12px] text-[#475467]">{String(a.description ?? '')}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {Array.isArray(fullReportData?.recommendations) && (fullReportData!.recommendations as unknown[]).length > 0 && (
+                      <div>
+                        <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-2">Recommendations</div>
+                        <div className="flex flex-col gap-2">
+                          {(fullReportData!.recommendations as Record<string, unknown>[]).map((r, i) => {
+                            const pri = String(r.priority ?? '').toLowerCase();
+                            const badge = { high: 'bg-[#fef2f2] text-[#991b1b]', medium: 'bg-[#fffbeb] text-[#92400e]', low: 'bg-[#f0fdf4] text-[#166534]' };
+                            const b = badge[pri as keyof typeof badge] ?? badge.low;
+                            return (
+                              <div key={i} className="bg-white border border-[#eaecf0] rounded-[8px] p-3">
+                                <div className="flex justify-between items-start mb-1">
+                                  <div className="text-[13px] font-semibold text-[#1d2939]">{String(r.title ?? '')}</div>
+                                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${b}`}>{pri}</span>
+                                </div>
+                                <div className="text-[12px] text-[#475467]">{String(r.description ?? '')}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {!fullReportData?.executiveSummary && (
+                      <p className="text-[13px] text-[#667085] italic">{reportContent || 'No content available.'}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Scorecard tab */}
+                {activeReportTab === 'scorecard' && (
+                  <div>
+                    {scorecardLoading && <p className="text-[13px] text-[#667085]">Generating scorecard… this may take a moment.</p>}
+                    {!scorecardLoading && !scorecard && <p className="text-[13px] text-[#667085]">Click Scorecard tab to load.</p>}
+                    {scorecard && (
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4">
+                          <div className="text-[48px] font-['Figtree:Medium',sans-serif] leading-none" style={{color: Number(scorecard.overallScore ?? 0) >= 70 ? '#027a48' : Number(scorecard.overallScore ?? 0) >= 40 ? '#dc6803' : '#b42318'}}>
+                            {String(scorecard.overallScore ?? '—')}
+                          </div>
+                          <div>
+                            <div className="text-[11px] text-[#667085] uppercase tracking-wider">Overall Score</div>
+                            <div className="text-[15px] font-semibold text-black">{String(scorecard.overallRating ?? '')}</div>
+                            <div className="text-[12px] text-[#475467] mt-1 max-w-[240px]">{String(scorecard.overallSummary ?? '')}</div>
+                          </div>
+                        </div>
+                        {scorecard.categories && Object.entries(scorecard.categories as Record<string, Record<string, unknown>>).map(([cat, data]) => (
+                          <div key={cat} className="border border-[#eaecf0] rounded-[8px] p-3">
+                            <div className="flex justify-between items-center mb-1">
+                              <div className="text-[13px] font-semibold text-black capitalize">{cat.replace(/_/g,' ')}</div>
+                              <div className="flex items-center gap-2">
+                                <div className="text-[18px] font-bold" style={{color: Number(data.score ?? 0) >= 70 ? '#027a48' : Number(data.score ?? 0) >= 40 ? '#dc6803' : '#b42318'}}>{String(data.score ?? '—')}</div>
+                                <span className="text-[10px] font-bold text-[#667085]">{String(data.rating ?? '')}</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-[#eaecf0] rounded-full h-1.5 mb-2">
+                              <div className="h-1.5 rounded-full" style={{width:`${data.score ?? 0}%`, background: Number(data.score ?? 0) >= 70 ? '#027a48' : Number(data.score ?? 0) >= 40 ? '#dc6803' : '#b42318'}} />
+                            </div>
+                            <div className="text-[12px] text-[#475467]">{String(data.explanation ?? '')}</div>
+                            {data.recommendation && <div className="text-[11px] text-[#667085] mt-1 italic">→ {String(data.recommendation)}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Fraud Score tab */}
+                {activeReportTab === 'fraud' && (
+                  <div>
+                    {fraudLoading && <p className="text-[13px] text-[#667085]">Analysing fraud indicators… this may take a moment.</p>}
+                    {!fraudLoading && !fraudScore && <p className="text-[13px] text-[#667085]">Click Fraud Score tab to load.</p>}
+                    {fraudScore && (
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4">
+                          <div className="text-[48px] font-['Figtree:Medium',sans-serif] leading-none" style={{color: Number(fraudScore.overallFraudRiskScore ?? 0) >= 60 ? '#b42318' : Number(fraudScore.overallFraudRiskScore ?? 0) >= 30 ? '#dc6803' : '#027a48'}}>
+                            {String(fraudScore.overallFraudRiskScore ?? '—')}
+                          </div>
+                          <div>
+                            <div className="text-[11px] text-[#667085] uppercase tracking-wider">Fraud Risk Score</div>
+                            <div className="text-[15px] font-semibold text-black">{String(fraudScore.riskLevel ?? '')}</div>
+                            <div className="text-[12px] text-[#475467] mt-1 max-w-[240px]">{String(fraudScore.riskSummary ?? '')}</div>
+                          </div>
+                        </div>
+                        {Array.isArray(fraudScore.riskFactors) && (fraudScore.riskFactors as Record<string, unknown>[]).map((f, i) => {
+                          const ind = String(f.indicator ?? '');
+                          const color = ind === 'red_flag' ? '#b42318' : ind === 'concerning' ? '#dc6803' : ind === 'suspicious' ? '#d97706' : '#027a48';
+                          return (
+                            <div key={i} className="border border-[#eaecf0] rounded-[8px] p-3">
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="text-[13px] font-semibold text-black">{String(f.factor ?? '')}</div>
+                                <span className="text-[10px] font-bold uppercase" style={{color}}>{ind.replace(/_/g,' ')}</span>
+                              </div>
+                              <div className="text-[12px] text-[#475467]">{String(f.finding ?? '')}</div>
+                            </div>
+                          );
+                        })}
+                        {Array.isArray(fraudScore.redFlags) && (fraudScore.redFlags as Record<string, unknown>[]).length > 0 && (
+                          <div>
+                            <div className="text-[11px] font-bold text-[#b42318] uppercase tracking-wider mb-2">Red Flags</div>
+                            {(fraudScore.redFlags as Record<string, unknown>[]).map((f, i) => (
+                              <div key={i} className="bg-[#fef2f2] border border-[#fca5a5] rounded-[8px] p-3 mb-2">
+                                <div className="text-[13px] font-semibold text-[#991b1b] mb-1">{String(f.title ?? '')}</div>
+                                <div className="text-[12px] text-[#7f1d1d]">{String(f.description ?? '')}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
