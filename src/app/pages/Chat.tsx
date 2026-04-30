@@ -14,8 +14,10 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState<Doc[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sessionTokens, setSessionTokens] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getDocuments()
@@ -25,12 +27,22 @@ export default function Chat() {
           title: (d.originalFilename ?? d.filename ?? `Document #${d.id}`) as string,
         }));
         setDocuments(docs);
-        // Start with no docs selected — user must explicitly choose
       })
       .catch(() => {});
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const toggleDoc = (id: number) => {
     setSelectedDocIds(prev =>
@@ -39,9 +51,17 @@ export default function Chat() {
   };
 
   const allSelected = documents.length > 0 && selectedDocIds.length === documents.length;
+  const toggleAll = () => setSelectedDocIds(allSelected ? [] : documents.map(d => d.id));
 
-  const toggleAll = () => {
-    setSelectedDocIds(allSelected ? [] : documents.map(d => d.id));
+  const dropdownLabel = () => {
+    if (documents.length === 0) return "No documents uploaded";
+    if (selectedDocIds.length === 0) return "Select documents to query…";
+    if (selectedDocIds.length === documents.length) return `All ${documents.length} documents selected`;
+    if (selectedDocIds.length === 1) {
+      const doc = documents.find(d => d.id === selectedDocIds[0]);
+      return doc?.title ?? "1 document selected";
+    }
+    return `${selectedDocIds.length} documents selected`;
   };
 
   const sendMessage = async () => {
@@ -97,53 +117,112 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Document selector — always-visible chips */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054]">Source Documents</span>
-            <span className="text-[12px] text-[#98a2b3]">
-              {selectedDocIds.length === 0
-                ? "— select at least one to ask questions"
-                : `${selectedDocIds.length} of ${documents.length} selected`}
-            </span>
+        {/* Document dropdown */}
+        <div className="flex items-center gap-3">
+          <span className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054] shrink-0">Source Documents</span>
+
+          <div className="relative" ref={dropdownRef}>
+            {/* Trigger button */}
+            <button
+              onClick={() => setDropdownOpen(o => !o)}
+              disabled={documents.length === 0}
+              className={`flex items-center gap-2 h-[38px] px-4 border rounded-[10px] text-[13px] transition-colors min-w-[260px] max-w-[420px] ${
+                selectedDocIds.length > 0
+                  ? "border-[#144430] bg-[#f0f9f4] text-[#144430]"
+                  : "border-[#d0d5dd] bg-white text-[#667085] hover:bg-gray-50"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                <path d="M4.16667 5H15.8333M4.16667 10H15.8333M4.16667 15H10" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round"/>
+              </svg>
+              <span className="flex-1 text-left truncate">{dropdownLabel()}</span>
+              {selectedDocIds.length > 0 && (
+                <span className="shrink-0 bg-[#144430] text-white text-[11px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {selectedDocIds.length}
+                </span>
+              )}
+              <svg className={`size-4 shrink-0 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 20 20">
+                <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {/* Dropdown panel */}
+            {dropdownOpen && documents.length > 0 && (
+              <div className="absolute top-[42px] left-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl min-w-[320px] max-w-[480px] overflow-hidden">
+                {/* Select all row */}
+                <div className="border-b border-[#eaecf0]">
+                  <button
+                    onClick={toggleAll}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <div className={`size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                      allSelected ? "bg-[#144430] border-[#144430]" : selectedDocIds.length > 0 ? "border-[#144430]" : "border-[#d0d5dd]"
+                    }`}>
+                      {allSelected && (
+                        <svg className="size-2.5" viewBox="0 0 10 10" fill="none">
+                          <path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                      {!allSelected && selectedDocIds.length > 0 && (
+                        <div className="w-2 h-0.5 bg-[#144430] rounded" />
+                      )}
+                    </div>
+                    <span className="text-[13px] font-['Figtree:Medium',sans-serif] font-semibold text-[#344054]">
+                      {allSelected ? "Deselect all" : "Select all documents"}
+                    </span>
+                    <span className="ml-auto text-[11px] text-[#98a2b3]">{documents.length} total</span>
+                  </button>
+                </div>
+
+                {/* Individual docs */}
+                <div className="max-h-[260px] overflow-y-auto py-1">
+                  {documents.map(doc => {
+                    const checked = selectedDocIds.includes(doc.id);
+                    return (
+                      <button
+                        key={doc.id}
+                        onClick={() => toggleDoc(doc.id)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <div className={`size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          checked ? "bg-[#144430] border-[#144430]" : "border-[#d0d5dd]"
+                        }`}>
+                          {checked && (
+                            <svg className="size-2.5" viewBox="0 0 10 10" fill="none">
+                              <path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-[13px] text-[#344054] truncate flex-1">{doc.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-[#eaecf0] px-4 py-2.5 flex justify-between items-center bg-gray-50">
+                  <span className="text-[12px] text-[#667085]">
+                    {selectedDocIds.length === 0 ? "No documents selected" : `${selectedDocIds.length} selected`}
+                  </span>
+                  <button
+                    onClick={() => setDropdownOpen(false)}
+                    className="text-[12px] font-semibold text-[#144430] hover:underline"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {documents.length === 0 ? (
-            <p className="text-[13px] text-[#667085]">No documents uploaded yet. Go to Documents to upload one.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {/* Select All chip */}
-              <button
-                onClick={toggleAll}
-                className={`h-[32px] px-3 rounded-full border text-[12px] font-['Figtree:Medium',sans-serif] font-medium transition-colors ${
-                  allSelected
-                    ? "bg-[#144430] border-[#144430] text-white"
-                    : "bg-white border-[#d0d5dd] text-[#344054] hover:bg-gray-50"
-                }`}
-              >
-                {allSelected ? "✓ All" : "All"}
-              </button>
-
-              {/* Individual doc chips */}
-              {documents.map(doc => {
-                const selected = selectedDocIds.includes(doc.id);
-                return (
-                  <button
-                    key={doc.id}
-                    onClick={() => toggleDoc(doc.id)}
-                    title={doc.title}
-                    className={`h-[32px] px-3 rounded-full border text-[12px] font-['Figtree:Medium',sans-serif] font-medium transition-colors max-w-[220px] truncate ${
-                      selected
-                        ? "bg-[#144430] border-[#144430] text-white"
-                        : "bg-white border-[#d0d5dd] text-[#344054] hover:bg-gray-50"
-                    }`}
-                  >
-                    {selected && <span className="mr-1">✓</span>}
-                    {doc.title}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Clear selection */}
+          {selectedDocIds.length > 0 && (
+            <button
+              onClick={() => setSelectedDocIds([])}
+              className="text-[12px] text-[#667085] hover:text-[#b42318] transition-colors"
+            >
+              Clear
+            </button>
           )}
         </div>
       </div>
@@ -200,7 +279,7 @@ export default function Chat() {
       {/* Input */}
       <div className="px-8 py-4 border-t border-[#eaecf0] shrink-0">
         {selectedDocIds.length === 0 && (
-          <p className="text-[12px] text-[#dc6803] mb-2">Select at least one document above to ask questions about it.</p>
+          <p className="text-[12px] text-[#dc6803] mb-2">Select at least one document above to ask questions.</p>
         )}
         {tokensRemaining <= 5000 && (
           <p className="text-[12px] text-[#b42318] mb-2">Running low on session tokens ({tokensRemaining.toLocaleString()} remaining). Keep questions short and specific.</p>
@@ -210,7 +289,11 @@ export default function Chat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder={selectedDocIds.length === 0 ? "Select documents above first…" : `Asking about ${selectedDocIds.length} document${selectedDocIds.length !== 1 ? "s" : ""}… (Enter to send)`}
+            placeholder={
+              selectedDocIds.length === 0
+                ? "Select documents above first…"
+                : `Ask about ${selectedDocIds.length === 1 ? documents.find(d => d.id === selectedDocIds[0])?.title ?? "your document" : `${selectedDocIds.length} documents`}… (Enter to send)`
+            }
             rows={2}
             disabled={selectedDocIds.length === 0}
             className="flex-1 px-4 py-3 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] resize-none focus:outline-none focus:border-[#667085] placeholder:text-[#98a2b3] disabled:bg-[#f9fafb] disabled:cursor-not-allowed"
