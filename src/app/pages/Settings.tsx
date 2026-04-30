@@ -48,6 +48,40 @@ export default function Settings() {
         </p>
       </div>
 
+      {(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        return (
+          <div className="max-w-[480px] mb-6">
+            <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6">
+              <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black mb-4">Profile</h2>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="size-12 rounded-full bg-[#ecf3ec] flex items-center justify-center shrink-0">
+                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">
+                    {(storedUser?.name ?? "U").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0,2)}
+                  </span>
+                </div>
+                <div>
+                  <div className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">{storedUser?.name ?? "—"}</div>
+                  <div className="text-[13px] text-[#667085]">{storedUser?.email ?? "—"}</div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {[
+                  { label: "Role", value: storedUser?.role ? (storedUser.role.charAt(0).toUpperCase() + storedUser.role.slice(1)) : "—" },
+                  { label: "Company", value: storedUser?.companyName ?? "—" },
+                  { label: "Account Status", value: storedUser?.isActive ? "Active" : "Inactive" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between py-2 border-b border-[#eaecf0] last:border-0">
+                    <span className="text-[13px] text-[#667085]">{label}</span>
+                    <span className="text-[13px] font-medium text-black">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="max-w-[480px]">
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6">
           <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black mb-1">

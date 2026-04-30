@@ -166,7 +166,7 @@ export default function Reports() {
   // Generate report modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateStep, setGenerateStep] = useState<'form' | 'generating' | 'complete'>('form');
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [generateMetrics, setGenerateMetrics] = useState<string[]>([]);
   const [selectedDiscrepancyLevels, setSelectedDiscrepancyLevels] = useState<string[]>([]);
   const [reportTimeframeFrom, setReportTimeframeFrom] = useState('');
   const [reportTimeframeTo, setReportTimeframeTo] = useState('');
@@ -191,7 +191,7 @@ export default function Reports() {
   const closeGenerateModal = () => {
     setShowGenerateModal(false);
     setGenerateStep('form');
-    setSelectedMetrics([]);
+    setGenerateMetrics([]);
     setSelectedDiscrepancyLevels([]);
     setReportTimeframeFrom('');
     setReportTimeframeTo('');
@@ -207,7 +207,7 @@ export default function Reports() {
     setGenerateError('');
     try {
       const parts: string[] = [];
-      if (selectedMetrics.length > 0) parts.push(`Focus on these metrics: ${selectedMetrics.join(', ')}.`);
+      if (generateMetrics.length > 0) parts.push(`Focus on these metrics: ${generateMetrics.join(', ')}.`);
       if (selectedDiscrepancyLevels.length > 0) parts.push(`Highlight ${selectedDiscrepancyLevels.join(', ')} severity discrepancies.`);
       if (reportTimeframeFrom || reportTimeframeTo) parts.push(`Analysis period: ${reportTimeframeFrom || 'start'} to ${reportTimeframeTo || 'present'}.`);
       if (reportDescription) parts.push(reportDescription);
@@ -1012,8 +1012,8 @@ export default function Reports() {
                         { value: "Trade & Other Payables", label: "Trade & Other Payables" },
                         { value: "Accrued Expenses", label: "Accrued Expenses" },
                       ]}
-                      selected={selectedMetrics}
-                      onChange={setSelectedMetrics}
+                      selected={generateMetrics}
+                      onChange={setGenerateMetrics}
                       isOpen={openModalFilter === 'metrics'}
                       onToggle={() => setOpenModalFilter(prev => prev === 'metrics' ? null : 'metrics')}
                       onClose={() => setOpenModalFilter(null)}
