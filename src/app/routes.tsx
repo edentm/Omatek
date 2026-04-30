@@ -6,6 +6,7 @@ import Reports from "./pages/Reports";
 import Documents from "./pages/Documents";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Chat from "./pages/Chat";
 import DashboardLayout from "./components/DashboardLayout";
 
 function ProtectedRoute() {
@@ -50,6 +51,10 @@ export const router = createBrowserRouter([
       {
         path: "settings",
         element: <Settings />,
+      },
+      {
+        path: "chat",
+        element: <Chat />,
       },
     ],
   },

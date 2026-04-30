@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
-import { getReports, getReport, finalizeReport } from "../../api";
+import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, generateCustomReport, getDocuments } from "../../api";
 
 export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -78,6 +78,21 @@ export default function Reports() {
   const [reportTimeframeTo, setReportTimeframeTo] = useState('');
   const [reportDescription, setReportDescription] = useState('');
   const [openModalFilter, setOpenModalFilter] = useState<string | null>(null);
+  const [availableDocuments, setAvailableDocuments] = useState<{id: number; title: string}[]>([]);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
+  const [generateError, setGenerateError] = useState('');
+  const [generatedReport, setGeneratedReport] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    getDocuments().then((data: unknown) => {
+      const docs = (data as Record<string, unknown>[]).map((d) => ({
+        id: d.id as number,
+        title: (d.originalFilename ?? d.filename ?? `Document #${d.id}`) as string,
+      }));
+      setAvailableDocuments(docs);
+      if (docs.length > 0) setSelectedDocumentId(docs[0].id);
+    }).catch(() => {});
+  }, []);
 
   const closeGenerateModal = () => {
     setShowGenerateModal(false);
@@ -88,11 +103,44 @@ export default function Reports() {
     setReportTimeframeTo('');
     setReportDescription('');
     setOpenModalFilter(null);
+    setGenerateError('');
+    setGeneratedReport(null);
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    if (!selectedDocumentId) return;
     setGenerateStep('generating');
-    setTimeout(() => setGenerateStep('complete'), 3500);
+    setGenerateError('');
+    try {
+      const parts: string[] = [];
+      if (selectedMetrics.length > 0) parts.push(`Focus on these metrics: ${selectedMetrics.join(', ')}.`);
+      if (selectedDiscrepancyLevels.length > 0) parts.push(`Highlight ${selectedDiscrepancyLevels.join(', ')} severity discrepancies.`);
+      if (reportTimeframeFrom || reportTimeframeTo) parts.push(`Analysis period: ${reportTimeframeFrom || 'start'} to ${reportTimeframeTo || 'present'}.`);
+      if (reportDescription) parts.push(reportDescription);
+      const instructions = parts.join(' ') || 'Provide a comprehensive financial audit report.';
+      const result = await generateCustomReport({
+        documentId: selectedDocumentId,
+        customInstructions: instructions,
+        startPeriod: reportTimeframeFrom || undefined,
+        endPeriod: reportTimeframeTo || undefined,
+      }) as Record<string, unknown>;
+      setGeneratedReport(result);
+      const newReport: Report = {
+        apiId: result.id as number,
+        title: (result.title ?? result.documentName ?? 'Custom Report') as string,
+        id: `FR-${String((result.id as number) ?? 0).padStart(4, '0')}`,
+        type: 'Custom Report',
+        category: 'Financial Analysis',
+        date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+        status: 'Needs Approval',
+        aiConfidence: result.confidenceScore != null ? `${Math.round(Number(result.confidenceScore) * (Number(result.confidenceScore) <= 1 ? 100 : 1))}%` : '—',
+      };
+      setReports(prev => [newReport, ...prev]);
+      setGenerateStep('complete');
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Failed to generate report');
+      setGenerateStep('form');
+    }
   };
 
   type Report = { apiId: number; title: string; id: string; type: string; category: string; date: string; status: string; finalizedDate?: string; aiConfidence: string };
@@ -354,12 +402,29 @@ export default function Reports() {
                       )}
                     </svg>
                   </button>
-                  {/* Download button */}
-                  <button className="size-5 text-[#667085] hover:text-gray-800">
-                    <svg className="size-full" fill="none" viewBox="0 0 20 20">
-                      <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5M5.83333 8.33333L10 12.5M10 12.5L14.1667 8.33333M10 12.5V2.5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
+                  {/* Download buttons */}
+                  {selectedReport && selectedReport.apiId > 0 && (
+                    <>
+                      <button
+                        title="Download CSV"
+                        onClick={() => exportReportCSV(selectedReport.apiId)}
+                        className="size-5 text-[#667085] hover:text-gray-800"
+                      >
+                        <svg className="size-full" fill="none" viewBox="0 0 20 20">
+                          <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5M5.83333 8.33333L10 12.5M10 12.5L14.1667 8.33333M10 12.5V2.5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        title="View Full Presentation"
+                        onClick={() => exportReportPresentation(selectedReport.apiId)}
+                        className="size-5 text-[#667085] hover:text-gray-800"
+                      >
+                        <svg className="size-full" fill="none" viewBox="0 0 20 20">
+                          <path d="M2.5 3.333h15M2.5 10h15M2.5 16.667h15" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </>
+                  )}
                 </div>
                 {/* Close button */}
                 <button
@@ -549,6 +614,25 @@ export default function Reports() {
             {/* ── FORM ── */}
             {generateStep === 'form' && (
               <>
+                {/* Document selector */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Document to Analyze</label>
+                  <select
+                    value={selectedDocumentId ?? ''}
+                    onChange={(e) => setSelectedDocumentId(Number(e.target.value))}
+                    className="w-full h-[36px] px-3 border border-[#d0d5dd] rounded-lg text-[14px] text-[#344054] focus:outline-none focus:border-[#667085] bg-white"
+                  >
+                    {availableDocuments.length === 0 && <option value="">No documents uploaded yet</option>}
+                    {availableDocuments.map((doc) => (
+                      <option key={doc.id} value={doc.id}>{doc.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {generateError && (
+                  <p className="text-[13px] text-[#b42318] bg-[#fef3f2] border border-[#fecdca] rounded-lg px-3 py-2">{generateError}</p>
+                )}
+
                 {/* Data source selectors */}
                 <div className="flex flex-col gap-2">
                   <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Data to Include</label>
@@ -644,7 +728,7 @@ export default function Reports() {
                 <div className="flex justify-center">
                   <button
                     onClick={handleGenerate}
-                    disabled={(selectedMetrics.length === 0 && selectedDiscrepancyLevels.length === 0) || (!reportTimeframeFrom && !reportTimeframeTo)}
+                    disabled={!selectedDocumentId || availableDocuments.length === 0}
                     className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg className="size-4" fill="none" viewBox="0 0 20 20">
@@ -693,39 +777,19 @@ export default function Reports() {
                 <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-3">
                   <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black">Report Summary</p>
                   <p className="text-[13px] text-[#475467] leading-[20px]">
-                    The AI has compiled a report covering
-                    {selectedMetrics.length > 0 && <> <strong>{selectedMetrics.join(', ')}</strong></>}
-                    {selectedMetrics.length > 0 && selectedDiscrepancyLevels.length > 0 && <> and</>}
-                    {selectedDiscrepancyLevels.length > 0 && <> <strong>{selectedDiscrepancyLevels.join(', ')}</strong> discrepancies</>}
-                    {(reportTimeframeFrom || reportTimeframeTo) && <> for the period {reportTimeframeFrom || '…'} – {reportTimeframeTo || '…'}</>}.
-                    {' '}Financial performance indicators have been extracted from ingested documents, including revenue trends, expense breakdowns, and variance analysis.
+                    {generatedReport
+                      ? String((generatedReport.executiveSummary as string) ?? '').slice(0, 300) + ((String(generatedReport.executiveSummary ?? '').length > 300) ? '…' : '')
+                      : 'AI-generated report is ready for review.'
+                    }
                   </p>
                 </div>
 
                 <div className="flex justify-center">
                   <button
                     onClick={() => {
-                      const newId = `FR-${String(reports.length + 1).padStart(4, '0')}-2026`;
-                      const hasMetrics = selectedMetrics.length > 0;
-                      const hasDiscrepancies = selectedDiscrepancyLevels.length > 0;
-                      const title = hasMetrics && hasDiscrepancies
-                        ? `Custom Analysis Report`
-                        : hasMetrics
-                          ? `${selectedMetrics[0]}${selectedMetrics.length > 1 ? ' & More' : ''} Report`
-                          : `${selectedDiscrepancyLevels.join('/')} Discrepancy Report`;
-                      const newReport: Report = {
-                        apiId: 0,
-                        title,
-                        id: newId,
-                        type: hasMetrics && hasDiscrepancies ? 'Combined Report' : hasMetrics ? 'Key Metrics Report' : 'Discrepancy Report',
-                        category: hasMetrics ? 'Financial Analysis' : 'Audit & Review',
-                        date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
-                        status: 'Needs Approval',
-                        aiConfidence: '89%',
-                      };
-                      setReports(prev => [newReport, ...prev]);
+                      const top = reports[0];
                       closeGenerateModal();
-                      openReport(newReport);
+                      if (top) openReport(top);
                     }}
                     className="h-[43px] px-5 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors"
                   >

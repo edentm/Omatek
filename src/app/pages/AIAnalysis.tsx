@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { getDiscrepancies, getIngestionLog } from "../../api";
+import { getDiscrepancies, getIngestionLog, uploadDocument, pollJobStatus } from "../../api";
 import FilterButton from "../components/FilterButton";
 
 export default function AIAnalysis() {
@@ -25,11 +25,13 @@ export default function AIAnalysis() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [modalStep, setModalStep] = useState<'idle' | 'analyzing' | 'complete'>('idle');
+  const [uploadError, setUploadError] = useState('');
 
   const closeModal = () => {
     setShowUploadModal(false);
     setUploadedFiles([]);
     setModalStep('idle');
+    setUploadError('');
   };
 
   const handleFileDrop = (e: React.DragEvent) => {
@@ -45,9 +47,30 @@ export default function AIAnalysis() {
     setUploadedFiles(prev => [...prev, ...incoming].slice(0, 20));
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     setModalStep('analyzing');
-    setTimeout(() => setModalStep('complete'), 3000);
+    setUploadError('');
+    try {
+      for (const file of uploadedFiles) {
+        const { jobId } = await uploadDocument(file);
+        await new Promise<void>((resolve, reject) => {
+          const interval = setInterval(async () => {
+            try {
+              const status = await pollJobStatus(jobId);
+              if (status.status === 'complete') { clearInterval(interval); resolve(); }
+              else if (status.status === 'failed') { clearInterval(interval); reject(new Error(status.error ?? 'Analysis failed')); }
+            } catch (e) { clearInterval(interval); reject(e); }
+          }, 2000);
+        });
+      }
+      // Refresh discrepancies after upload
+      getDiscrepancies().then(setDiscrepancies).catch(() => {});
+      getIngestionLog().then(setIngestionLog).catch(() => {});
+      setModalStep('complete');
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+      setModalStep('idle');
+    }
   };
 
   const handleSave = () => {
@@ -726,6 +749,9 @@ export default function AIAnalysis() {
                     <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Upload & Analyze</span>
                   </button>
                 </div>
+                {uploadError && (
+                  <p className="text-[13px] text-[#b42318] bg-[#fef3f2] border border-[#fecdca] rounded-lg px-3 py-2 text-center">{uploadError}</p>
+                )}
               </>
             )}
 
