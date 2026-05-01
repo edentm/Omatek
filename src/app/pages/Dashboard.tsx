@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getDashboardMetrics, getDashboardCharts, getDocuments, getReports, getStockData } from "../../api";
+import { getDashboardMetrics, getDashboardCharts, getDocuments, getReports, getReport, getStockData } from "../../api";
 import { useDocumentContext } from "../../contexts/DocumentContext";
 
 type PlatformMetrics = {
@@ -206,7 +206,7 @@ export default function Dashboard() {
       .catch(() => {})
   }, [])
 
-  // When active document changes, load that document's report data
+  // When active document changes, load that document's full report data
   useEffect(() => {
     if (!activeDocument) {
       setDocFinancials(null)
@@ -216,14 +216,16 @@ export default function Dashboard() {
     setDocLoading(true)
     setDocFinancials(null)
 
+    // Step 1: find the report ID for this document from the list endpoint
     getReports()
-      .then((data: unknown) => {
+      .then(async (data: unknown) => {
         const reports = data as Record<string, unknown>[]
-        const report = reports.find(
-          r => r.documentId === activeDocument.id || r.document_id === activeDocument.id
+        // camelCase middleware converts document_id → documentId
+        const listItem = reports.find(
+          r => Number(r.documentId ?? r.document_id) === activeDocument.id
         )
 
-        if (!report) {
+        if (!listItem) {
           setDocFinancials({
             revenue: null, expenses: null, healthScore: null, healthRating: null,
             revenuePts: [], expensePts: [], healthPts: [],
@@ -231,33 +233,41 @@ export default function Dashboard() {
           return
         }
 
-        // Extract financials from report keyMetrics
-        const km = (report.keyMetrics ?? {}) as Record<string, unknown>
+        // Step 2: fetch full report to get keyMetrics (not in list response)
+        const full = await getReport(Number(listItem.id)) as Record<string, unknown>
+
+        // keyMetrics comes back camelCase from middleware: { totalRevenue, totalExpenses, ... }
+        // but actual keys depend on what Claude extracted — try both cases
+        const km = (full.keyMetrics ?? full.key_metrics ?? {}) as Record<string, unknown>
         const rev = km.totalRevenue ?? km.total_revenue ?? km.revenue ?? km.Revenue
+          ?? km["Total Revenue"] ?? km["total revenue"]
         const exp = km.totalExpenses ?? km.total_expenses ?? km.expenses ?? km.Expenses
+          ?? km["Total Expenses"] ?? km["total expenses"]
 
-        const healthScore = report.healthScore != null ? Number(report.healthScore) : null
-        const healthRating = report.healthRating ? String(report.healthRating) : null
+        const healthScore = full.healthScore != null ? Number(full.healthScore)
+          : full.health_score != null ? Number(full.health_score) : null
+        const healthRating = (full.healthRating ?? full.health_rating)
+          ? String(full.healthRating ?? full.health_rating) : null
 
-        // Filter global trend data to only this document's name
+        // Filter global chart trend to only this document's points
         const docName = activeDocument.name
         const revPts = allRevenueTrend
           .filter(p => p.documentName === docName)
-          .map(p => ({ label: `${p.documentName} (${p.date})`, value: parseVal(p.value) }))
+          .map(p => ({ label: p.date, value: parseVal(p.value) }))
         const expPts = allExpenseTrend
           .filter(p => p.documentName === docName)
-          .map(p => ({ label: `${p.documentName} (${p.date})`, value: parseVal(p.value) }))
+          .map(p => ({ label: p.date, value: parseVal(p.value) }))
         const healthPts = allHealthTrend
           .filter(p => p.documentName === docName)
-          .map(p => ({ label: `${p.documentName} (${p.date})`, value: p.score }))
+          .map(p => ({ label: p.date, value: p.score }))
 
-        // If no trend match by name, build single-point from the report itself
-        const finalRevPts = revPts.length > 0 ? revPts :
-          rev != null ? [{ label: docName, value: parseVal(String(rev)) }] : []
-        const finalExpPts = expPts.length > 0 ? expPts :
-          exp != null ? [{ label: docName, value: parseVal(String(exp)) }] : []
-        const finalHealthPts = healthPts.length > 0 ? healthPts :
-          healthScore != null ? [{ label: docName, value: healthScore }] : []
+        // Fall back to single-point from the report if no trend match
+        const finalRevPts = revPts.length > 0 ? revPts
+          : rev != null ? [{ label: docName, value: parseVal(String(rev)) }] : []
+        const finalExpPts = expPts.length > 0 ? expPts
+          : exp != null ? [{ label: docName, value: parseVal(String(exp)) }] : []
+        const finalHealthPts = healthPts.length > 0 ? healthPts
+          : healthScore != null ? [{ label: docName, value: healthScore }] : []
 
         setDocFinancials({
           revenue: rev != null ? String(rev) : null,
