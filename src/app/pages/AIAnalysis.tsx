@@ -3,9 +3,11 @@ import { useState, useEffect, useRef } from "react";
 import { getDiscrepancies, getIngestionLog, uploadDocument, pollJobStatus, getDocuments } from "../../api";
 import FilterButton from "../components/FilterButton";
 import { useDocumentContext } from "../../contexts/DocumentContext";
+import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 
 export default function AIAnalysis() {
   const { activeDocument, setActiveDocument } = useDocumentContext();
+  const { isExhausted } = useTokenLedger();
   const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('keyMetrics');
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
   const [discrepancies, setDiscrepancies] = useState<Record<string, unknown>[]>([]);
@@ -42,6 +44,7 @@ export default function AIAnalysis() {
   // Only load analysis data when user explicitly triggers it
   const loadAnalysis = () => {
     if (!activeDocument) return;
+    if (isExhausted) return;
     setAnalysisLoading(true);
     Promise.all([
       getDiscrepancies().catch(() => []),
@@ -287,11 +290,14 @@ export default function AIAnalysis() {
 
         <button
           onClick={loadAnalysis}
-          disabled={!activeDocument || analysisLoading}
+          disabled={!activeDocument || analysisLoading || isExhausted}
+          title={isExhausted ? 'API balance exhausted — recharge to use AI features' : undefined}
           className="flex items-center gap-2 h-[36px] px-5 bg-[#144430] text-white rounded-[8px] text-[13px] font-medium hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {analysisLoading ? (
             <><svg className="size-4 animate-spin" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" strokeDasharray="25 50"/></svg>Loading…</>
+          ) : isExhausted ? (
+            <>Recharge Required</>
           ) : (
             <><svg className="size-4" fill="none" viewBox="0 0 20 20"><path d="M10 3v3M10 14v3M3 10h3M14 10h3M5.05 5.05l2.12 2.12M12.83 12.83l2.12 2.12M5.05 14.95l2.12-2.12M12.83 7.17l2.12-2.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Load Analysis</>
           )}

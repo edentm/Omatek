@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
 import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
+import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 
 export default function Reports() {
+  const { isExhausted } = useTokenLedger();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
@@ -135,6 +137,7 @@ export default function Reports() {
 
   const loadScorecard = async () => {
     if (!selectedReport || !selectedReport.apiId) return;
+    if (isExhausted) { setScorecardError('API balance exhausted. Please recharge to use AI features.'); return; }
     if (scorecardCache.current.has(selectedReport.apiId)) {
       setScorecard(scorecardCache.current.get(selectedReport.apiId)!);
       setScorecardError(null);
@@ -153,6 +156,7 @@ export default function Reports() {
 
   const loadFraudScore = async () => {
     if (!selectedReport || !selectedReport.apiId) return;
+    if (isExhausted) { setFraudError('API balance exhausted. Please recharge to use AI features.'); return; }
     if (fraudScoreCache.current.has(selectedReport.apiId)) {
       setFraudScore(fraudScoreCache.current.get(selectedReport.apiId)!);
       setFraudError(null);
@@ -217,6 +221,7 @@ export default function Reports() {
 
   const handleGenerate = async () => {
     if (!selectedDocumentId) return;
+    if (isExhausted) { setGenerateError('API balance exhausted. Please recharge to use AI features.'); return; }
     setGenerateStep('generating');
     setGenerateError('');
     try {
