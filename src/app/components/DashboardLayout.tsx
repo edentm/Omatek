@@ -3,11 +3,13 @@ import { Outlet, useNavigate, useLocation } from "react-router";
 import { Home, Brain, FileText, Files, Users, Settings, LogOut, MessageSquare } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi, getDashboardMetrics } from "../../api";
+import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [anomalyCount, setAnomalyCount] = useState(0);
+  const { isExhausted } = useTokenLedger();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -137,6 +139,14 @@ export default function DashboardLayout() {
 
           {/* Bottom Section */}
           <div className="shrink-0 border-[#eaecf0] border-t-[0.8px] border-solid">
+            {/* Token Balance Warning */}
+            {isExhausted && (
+              <div className="px-[8px] pb-[4px] pt-[8px]">
+                <div className="bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] px-3 py-2 text-[11px] text-[#b42318] font-medium">
+                  API Balance Empty
+                </div>
+              </div>
+            )}
             {/* Log out */}
             <div className="px-[8px] pt-[8px] pb-[4px]">
               <button

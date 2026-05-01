@@ -405,14 +405,38 @@ export const getMultiReport = async (id: number) => {
   return res.json()
 }
 
-export const askPlatform = async (question: string, documentIds: number[]) => {
+export const askPlatform = async (question: string, documentIds: number[], sessionId?: string) => {
   const res = await authFetch('/api/ask', {
     method: 'POST',
     body: JSON.stringify({
       question,
       document_ids: documentIds,
+      ...(sessionId ? { session_id: sessionId } : {}),
     }),
   })
-  if (!res.ok) throw new Error('Failed to get answer')
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const status = res.status
+    throw new Error(`${status}: ${(err as Record<string, string>).detail || 'Failed to get answer'}`)
+  }
+  return res.json()
+}
+
+export const getTokenBalance = async () => {
+  const res = await authFetch('/api/ask/balance')
+  if (!res.ok) return { balance: 1000000, totalBudget: 1000000 }
+  return res.json()
+}
+
+export const getChatHistory = async () => {
+  const res = await authFetch('/api/ask/history')
+  if (!res.ok) throw new Error('Failed to fetch chat history')
+  return res.json()
+  // Returns: array of ConversationOut, sorted by created_at desc
+}
+
+export const deleteConversation = async (id: number) => {
+  const res = await authFetch(`/api/ask/history/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete conversation')
   return res.json()
 }

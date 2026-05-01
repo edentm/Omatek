@@ -9,14 +9,17 @@ import Settings from "./pages/Settings";
 import Chat from "./pages/Chat";
 import DashboardLayout from "./components/DashboardLayout";
 import { DocumentProvider } from "../contexts/DocumentContext";
+import { TokenLedgerProvider } from "../contexts/TokenLedgerContext";
 
 function ProtectedRoute() {
   const token = localStorage.getItem("token");
   if (!token) return <Navigate to="/login" replace />;
   return (
-    <DocumentProvider>
-      <DashboardLayout />
-    </DocumentProvider>
+    <TokenLedgerProvider>
+      <DocumentProvider>
+        <DashboardLayout />
+      </DocumentProvider>
+    </TokenLedgerProvider>
   );
 }
 
