@@ -130,34 +130,43 @@ export default function Reports() {
     }
   };
 
+  const [scorecardError, setScorecardError] = useState<string | null>(null);
+  const [fraudError, setFraudError] = useState<string | null>(null);
+
   const loadScorecard = async () => {
     if (!selectedReport || !selectedReport.apiId) return;
-    // Already loaded for this report
     if (scorecardCache.current.has(selectedReport.apiId)) {
       setScorecard(scorecardCache.current.get(selectedReport.apiId)!);
+      setScorecardError(null);
       return;
     }
     setScorecardLoading(true);
+    setScorecardError(null);
     try {
       const result = await getScorecard(selectedReport.apiId) as Record<string, unknown>;
       scorecardCache.current.set(selectedReport.apiId, result);
       setScorecard(result);
-    } catch { /* silently fail */ } finally { setScorecardLoading(false); }
+    } catch (err) {
+      setScorecardError(err instanceof Error ? err.message : 'Failed to load scorecard. Please try again.');
+    } finally { setScorecardLoading(false); }
   };
 
   const loadFraudScore = async () => {
     if (!selectedReport || !selectedReport.apiId) return;
-    // Already loaded for this report
     if (fraudScoreCache.current.has(selectedReport.apiId)) {
       setFraudScore(fraudScoreCache.current.get(selectedReport.apiId)!);
+      setFraudError(null);
       return;
     }
     setFraudLoading(true);
+    setFraudError(null);
     try {
       const result = await getFraudScore(selectedReport.apiId) as Record<string, unknown>;
       fraudScoreCache.current.set(selectedReport.apiId, result);
       setFraudScore(result);
-    } catch { /* silently fail */ } finally { setFraudLoading(false); }
+    } catch (err) {
+      setFraudError(err instanceof Error ? err.message : 'Failed to load fraud score. Please try again.');
+    } finally { setFraudLoading(false); }
   };
 
   const getConfidencePill = (confidence: string) => {
@@ -673,7 +682,13 @@ export default function Reports() {
                 {activeReportTab === 'scorecard' && (
                   <div>
                     {scorecardLoading && <p className="text-[13px] text-[#667085]">Generating scorecard… this may take a moment.</p>}
-                    {!scorecardLoading && !scorecard && <p className="text-[13px] text-[#667085]">Click Scorecard tab to load.</p>}
+                    {scorecardError && !scorecardLoading && (
+                      <div className="flex flex-col gap-2 p-3 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px]">
+                        <p className="text-[12px] text-[#b42318]">{scorecardError}</p>
+                        <button onClick={loadScorecard} className="self-start text-[12px] font-semibold text-[#b42318] underline hover:no-underline">Retry</button>
+                      </div>
+                    )}
+                    {!scorecardLoading && !scorecard && !scorecardError && <p className="text-[13px] text-[#667085]">Click Scorecard tab to load.</p>}
                     {scorecard && (
                       <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4">
@@ -711,7 +726,13 @@ export default function Reports() {
                 {activeReportTab === 'fraud' && (
                   <div>
                     {fraudLoading && <p className="text-[13px] text-[#667085]">Analysing fraud indicators… this may take a moment.</p>}
-                    {!fraudLoading && !fraudScore && <p className="text-[13px] text-[#667085]">Click Fraud Score tab to load.</p>}
+                    {fraudError && !fraudLoading && (
+                      <div className="flex flex-col gap-2 p-3 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px]">
+                        <p className="text-[12px] text-[#b42318]">{fraudError}</p>
+                        <button onClick={loadFraudScore} className="self-start text-[12px] font-semibold text-[#b42318] underline hover:no-underline">Retry</button>
+                      </div>
+                    )}
+                    {!fraudLoading && !fraudScore && !fraudError && <p className="text-[13px] text-[#667085]">Click Fraud Score tab to load.</p>}
                     {fraudScore && (
                       <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4">
