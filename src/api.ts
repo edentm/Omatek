@@ -300,6 +300,20 @@ export const exportReportPresentation = async (
   setTimeout(() => URL.revokeObjectURL(url), 120000)
 }
 
+export const fetchReportPresentationHTML = async (
+  id: number,
+  sections?: string[],
+  metrics?: string[],
+): Promise<string> => {
+  const params = new URLSearchParams()
+  if (sections && sections.length > 0) params.set('sections', sections.join(','))
+  if (metrics && metrics.length > 0) params.set('metrics', metrics.join(','))
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const res = await authFetch(`/api/reports/${id}/export/presentation${query}`)
+  if (!res.ok) throw new Error('Failed to fetch presentation HTML')
+  return res.text()
+}
+
 export const generateCustomReport = async (body: {
   documentId: number
   customInstructions: string

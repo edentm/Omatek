@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
-import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
+import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, fetchReportPresentationHTML, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 
 export default function Reports() {
@@ -45,6 +45,9 @@ export default function Reports() {
   const [selectedSections, setSelectedSections] = useState<string[]>(SECTION_OPTIONS.map(s => s.key));
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
   const [exportLoading, setExportLoading] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const availableMetricKeys: string[] = fullReportData?.keyMetrics
     ? Object.keys(fullReportData.keyMetrics as Record<string, unknown>)
@@ -65,15 +68,19 @@ export default function Reports() {
   const handleExport = async () => {
     if (!selectedReport || !selectedReport.apiId) return;
     setExportLoading(true);
+    setPreviewLoading(true);
     try {
-      await exportReportPresentation(
+      const html = await fetchReportPresentationHTML(
         selectedReport.apiId,
         selectedSections,
         selectedMetrics.length > 0 ? selectedMetrics : undefined,
       );
+      setPreviewHtml(html);
+      setShowExportModal(false);
+      setShowPreviewModal(true);
     } catch { /* silently fail */ }
     setExportLoading(false);
-    setShowExportModal(false);
+    setPreviewLoading(false);
   };
 
   // Filter state
@@ -422,61 +429,115 @@ export default function Reports() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {reports.filter(report => {
-              if (debouncedSearch && ![report.title, report.status].some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()))) return false;
-              if (statusFilter.length > 0 && !statusFilter.includes(report.status)) return false;
-              if (dateCreatedFrom || dateCreatedTo) {
-                const d = parseDate(report.date);
-                if (d && dateCreatedFrom && d < new Date(dateCreatedFrom)) return false;
-                if (d && dateCreatedTo && d > new Date(dateCreatedTo)) return false;
+            {(() => {
+              const filtered = reports.filter(report => {
+                if (debouncedSearch && ![report.title, report.status].some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()))) return false;
+                if (statusFilter.length > 0 && !statusFilter.includes(report.status)) return false;
+                if (dateCreatedFrom || dateCreatedTo) {
+                  const d = parseDate(report.date);
+                  if (d && dateCreatedFrom && d < new Date(dateCreatedFrom)) return false;
+                  if (d && dateCreatedTo && d > new Date(dateCreatedTo)) return false;
+                }
+                if (dateFinalizedFrom || dateFinalizedTo) {
+                  const d = report.finalizedDate ? parseDate(report.finalizedDate) : null;
+                  if (!d) return false;
+                  if (dateFinalizedFrom && d < new Date(dateFinalizedFrom)) return false;
+                  if (dateFinalizedTo && d > new Date(dateFinalizedTo)) return false;
+                }
+                if (confidenceFilter.length > 0) {
+                  const v = parseInt(report.aiConfidence);
+                  const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
+                  if (!confidenceFilter.includes(band)) return false;
+                }
+                return true;
+              });
+
+              if (!loadingReports && reports.length === 0) {
+                return (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <svg className="size-12 text-[#d0d5dd]" fill="none" viewBox="0 0 48 48">
+                          <rect x="8" y="6" width="32" height="36" rx="4" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M24 18v12M19 24l5-6 5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <div>
+                          <p className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black mb-1">No reports yet</p>
+                          <p className="text-[13px] text-[#667085]">Generate your first report by clicking Generate Report above.</p>
+                        </div>
+                        <button
+                          onClick={() => setShowGenerateModal(true)}
+                          className="h-[36px] px-4 bg-[#144430] rounded-[8px] text-[13px] text-white font-medium hover:bg-[#0f3324] transition-colors"
+                        >
+                          Generate Report
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
               }
-              if (dateFinalizedFrom || dateFinalizedTo) {
-                const d = report.finalizedDate ? parseDate(report.finalizedDate) : null;
-                if (!d) return false;
-                if (dateFinalizedFrom && d < new Date(dateFinalizedFrom)) return false;
-                if (dateFinalizedTo && d > new Date(dateFinalizedTo)) return false;
+
+              if (!loadingReports && reports.length > 0 && filtered.length === 0) {
+                return (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center">
+                      <p className="text-[14px] text-[#667085]">No reports match your filters.{" "}
+                        <button
+                          onClick={() => {
+                            setStatusFilter([]);
+                            setDateCreatedFrom("");
+                            setDateCreatedTo("");
+                            setDateFinalizedFrom("");
+                            setDateFinalizedTo("");
+                            setConfidenceFilter([]);
+                            setSearchQuery("");
+                          }}
+                          className="text-[#144430] font-medium hover:underline"
+                        >
+                          Clear filters
+                        </button>
+                      </p>
+                    </td>
+                  </tr>
+                );
               }
-              if (confidenceFilter.length > 0) {
-                const v = parseInt(report.aiConfidence);
-                const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
-                if (!confidenceFilter.includes(band)) return false;
-              }
-              return true;
-            }).map((report, index) => (
-              <tr 
-                key={index} 
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => openReport(report)}
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                    {report.title}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
-                    report.status === "Finalized"
-                      ? "bg-[#ecfdf3] text-[#027a48]"
-                      : "bg-[#e8f0fe] text-[#1a56db]"
-                  }`}>
-                    {report.status === "Finalized" ? "Finalized" : "Needs Approval"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {(() => { const p = getConfidencePill(report.aiConfidence); return (
-                    <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
-                      {p.label}
+
+              return filtered.map((report, index) => (
+                <tr
+                  key={index}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => openReport(report)}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
+                      {report.title}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
+                      report.status === "Finalized"
+                        ? "bg-[#ecfdf3] text-[#027a48]"
+                        : "bg-[#e8f0fe] text-[#1a56db]"
+                    }`}>
+                      {report.status === "Finalized" ? "Finalized" : "Needs Approval"}
                     </span>
-                  ); })()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                  {report.date}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                  {report.finalizedDate ?? "—"}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {(() => { const p = getConfidencePill(report.aiConfidence); return (
+                      <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
+                        {p.label}
+                      </span>
+                    ); })()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                    {report.date}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                    {report.finalizedDate ?? "—"}
+                  </td>
+                </tr>
+              ));
+            })()}
           </tbody>
         </table>
       </div>
@@ -1188,6 +1249,64 @@ export default function Reports() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {showPreviewModal && previewHtml && selectedReport && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowPreviewModal(false)} />
+          <div className="relative bg-white rounded-[16px] shadow-2xl w-full max-w-5xl mx-4 flex flex-col" style={{ maxHeight: 'calc(100vh - 48px)' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#eaecf0] shrink-0">
+              <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black">Report Preview</h2>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="text-[#667085] hover:text-black transition-colors"
+              >
+                <svg className="size-5" fill="none" viewBox="0 0 20 20">
+                  <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* iframe */}
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                srcDoc={previewHtml.replace(/window\.onload\s*=[\s\S]*?\};/, 'window.onload = function(){};')}
+                style={{ width: '100%', height: 'calc(100vh - 200px)', border: 'none' }}
+                title="Report Preview"
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#eaecf0] shrink-0">
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="h-[40px] px-5 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await exportReportPresentation(
+                      selectedReport.apiId,
+                      selectedSections,
+                      selectedMetrics.length > 0 ? selectedMetrics : undefined,
+                    );
+                  } catch { /* silently fail */ }
+                  setShowPreviewModal(false);
+                }}
+                className="h-[40px] px-6 bg-[#144430] rounded-[10px] text-[14px] text-white font-medium hover:bg-[#0f3324] transition-colors flex items-center gap-2"
+              >
+                <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                  <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5M5.83333 8.33333L10 12.5M10 12.5L14.1667 8.33333M10 12.5V2.5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Download PDF
+              </button>
+            </div>
           </div>
         </div>
       )}

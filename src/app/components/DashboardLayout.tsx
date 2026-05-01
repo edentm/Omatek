@@ -1,15 +1,44 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { Home, Brain, FileText, Files, Users, Settings, LogOut, MessageSquare } from "lucide-react";
+import { Home, Brain, FileText, Files, Users, Settings, LogOut, MessageSquare, Bell, Menu, ClipboardList } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi, getDashboardMetrics } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
+
+interface Notification {
+  id: string;
+  text: string;
+  time: string;
+  read: boolean;
+}
+
+const NOTIF_KEY = "omatek_notifications";
+
+function relativeTime(isoTime: string): string {
+  const diff = Date.now() - new Date(isoTime).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [anomalyCount, setAnomalyCount] = useState(0);
   const { isExhausted } = useTokenLedger();
+
+  // Mobile sidebar state — closed by default on mobile, always shown on desktop
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -26,6 +55,53 @@ export default function DashboardLayout() {
     .slice(0, 2);
   const displayName = userName.split(" ")[0];
 
+  // Load notifications from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(NOTIF_KEY);
+      if (stored) setNotifications(JSON.parse(stored));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Listen for custom notification events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ text: string }>).detail;
+      if (!detail?.text) return;
+      const newNotif: Notification = {
+        id: crypto.randomUUID(),
+        text: detail.text,
+        time: new Date().toISOString(),
+        read: false,
+      };
+      setNotifications((prev) => {
+        const updated = [newNotif, ...prev];
+        try {
+          localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+    };
+    window.addEventListener("omatek:notify", handler);
+    return () => window.removeEventListener("omatek:notify", handler);
+  }, []);
+
+  // Close notifications panel on outside click
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showNotifications]);
+
   useEffect(() => {
     getDashboardMetrics()
       .then((m: unknown) => {
@@ -40,6 +116,25 @@ export default function DashboardLayout() {
     navigate("/login");
   };
 
+  const handleOpenNotifications = () => {
+    setShowNotifications((prev) => {
+      const opening = !prev;
+      if (opening && unreadCount > 0) {
+        // Mark all as read
+        setNotifications((notifs) => {
+          const updated = notifs.map((n) => ({ ...n, read: true }));
+          try {
+            localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
+          } catch {
+            // ignore
+          }
+          return updated;
+        });
+      }
+      return opening;
+    });
+  };
+
   // Helper: returns Tailwind classes + icon color for a given path
   const navBtn = (path: string) => ({
     btn: `h-[45px] rounded-[10px] w-full text-left transition-colors ${isActive(path) ? "bg-[#e7e7e7]" : "hover:bg-[#f0f0f0]"}`,
@@ -47,10 +142,24 @@ export default function DashboardLayout() {
     text: `font-['Figtree:Regular',sans-serif] font-normal leading-[21px] text-[14px] ${isActive(path) ? "text-[#101828] font-semibold" : "text-[#344054]"}`,
   });
 
+  // Sidebar classes differ between mobile-open, mobile-closed, and desktop
+  const sidebarClasses = sidebarOpen
+    ? "flex fixed inset-y-0 left-0 z-50 w-[187px] bg-[#f9fafb] flex-col h-full"
+    : "hidden md:flex flex-col bg-[#f9fafb] h-full relative shrink-0 w-[187px]";
+
   return (
     <div className="bg-white flex h-screen w-full overflow-hidden">
+
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="bg-[#f9fafb] h-full relative shrink-0 w-[187px]">
+      <div className={sidebarClasses}>
         <div className="border-[#eaecf0] border-r-[0.8px] border-solid absolute inset-0 pointer-events-none" />
         <div className="flex flex-col h-full pr-[0.8px]">
 
@@ -70,6 +179,70 @@ export default function DashboardLayout() {
           {/* Navigation */}
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col gap-[4px] pt-[16px] px-[8px]">
+
+              {/* Notifications Bell */}
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={handleOpenNotifications}
+                  className="h-[45px] rounded-[10px] w-full text-left transition-colors hover:bg-[#f0f0f0]"
+                >
+                  <div className="flex items-center gap-[12px] pl-[16px]">
+                    <div className="relative shrink-0">
+                      <Bell className="size-[20px]" strokeWidth={1.66667} color="#344054" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-[2px] bg-[#b42318] rounded-full text-white text-[9px] font-semibold flex items-center justify-center">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[21px] text-[14px] text-[#344054]">
+                      Notifications
+                    </p>
+                  </div>
+                </button>
+
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute left-full top-0 ml-2 z-[200] w-[280px] bg-white border border-[#eaecf0] rounded-[12px] shadow-lg overflow-hidden">
+                    <div className="flex items-center justify-between px-[12px] py-[10px] border-b border-[#eaecf0]">
+                      <p className="font-semibold text-[13px] text-[#101828]">Notifications</p>
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={() => {
+                            const updated = notifications.map((n) => ({ ...n, read: true }));
+                            setNotifications(updated);
+                            try {
+                              localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                          className="text-[11px] text-[#667085] hover:text-[#344054] transition-colors"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="text-[12px] text-[#667085] text-center py-[20px]">
+                          No notifications yet
+                        </p>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            className={`px-[12px] py-[10px] border-b border-[#f2f4f7] last:border-0 ${!notif.read ? "bg-[#f9fafb]" : ""}`}
+                          >
+                            <p className="text-[12px] text-[#344054] leading-[18px]">{notif.text}</p>
+                            <p className="text-[10px] text-[#98a2b3] mt-[2px]">{relativeTime(notif.time)}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Dashboard */}
               <button onClick={() => navigate("/dashboard")} className={navBtn("/dashboard").btn}>
@@ -122,6 +295,16 @@ export default function DashboardLayout() {
                   <div className="flex items-center gap-[12px] pl-[16px]">
                     <Users className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/users").icon} />
                     <p className={navBtn("/users").text}>Users</p>
+                  </div>
+                </button>
+              )}
+
+              {/* Audit Log — admin only */}
+              {isAdmin && (
+                <button onClick={() => navigate("/audit-log")} className={navBtn("/audit-log").btn}>
+                  <div className="flex items-center gap-[12px] pl-[16px]">
+                    <ClipboardList className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/audit-log").icon} />
+                    <p className={navBtn("/audit-log").text}>Audit Log</p>
                   </div>
                 </button>
               )}
@@ -182,7 +365,15 @@ export default function DashboardLayout() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto relative">
+        {/* Hamburger — mobile only, shown when sidebar is closed */}
+        <button
+          className="md:hidden absolute top-[16px] left-[16px] z-30 p-[6px] rounded-[8px] bg-white border border-[#eaecf0] shadow-sm hover:bg-[#f0f0f0] transition-colors"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open sidebar"
+        >
+          <Menu className="size-[20px]" strokeWidth={1.66667} color="#344054" />
+        </button>
         <Outlet />
       </div>
     </div>

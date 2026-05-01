@@ -9,10 +9,12 @@ type Document = {
   uploadDate: string;
   uploadedBy: string;
   uploadedByRole: string;
+  processing?: boolean;
 };
 
 export default function Documents() {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [docsError, setDocsError] = useState("");
 
@@ -94,8 +96,27 @@ export default function Documents() {
     setModalStep('analyzing');
     setUploadError("");
     try {
-      for (const file of uploadedFiles) {
-        const { jobId } = await uploadDocument(file);
+      const uploadPromises = uploadedFiles.map(async (file) => {
+        const { jobId, documentId } = await uploadDocument(file);
+
+        // Optimistically add to documents list with processing flag
+        const optimisticEntry: Document = {
+          id: documentId,
+          title: file.name,
+          type: (file.name.split('.').pop() ?? '').toUpperCase() || '—',
+          uploadDate: 'Today',
+          uploadedBy: '…',
+          uploadedByRole: '',
+          processing: true,
+        };
+        setDocuments(prev => {
+          // Avoid duplicate if already in list
+          if (prev.some(d => d.id === documentId)) return prev;
+          return [optimisticEntry, ...prev];
+        });
+        setProcessingIds(prev => new Set(prev).add(documentId));
+
+        // Poll until job complete
         await new Promise<void>((resolve, reject) => {
           const interval = setInterval(async () => {
             try {
@@ -113,9 +134,22 @@ export default function Documents() {
             }
           }, 2000);
         });
-      }
-      refreshDocuments();
+
+        // Job done — remove from processing set, then refresh to replace optimistic entry
+        setProcessingIds(prev => {
+          const next = new Set(prev);
+          next.delete(documentId);
+          return next;
+        });
+        refreshDocuments();
+        window.dispatchEvent(new CustomEvent('omatek:notify', { detail: { text: `Document "${file.name}" finished processing and is ready for analysis.` } }));
+      });
+
+      // Close modal immediately so user can see the processing badges
       setModalStep('complete');
+
+      // Wait for all uploads in background (errors surface via toast)
+      await Promise.allSettled(uploadPromises);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
       setModalStep('idle');
@@ -224,83 +258,137 @@ export default function Documents() {
       {loadingDocs && <p className="text-[14px] text-[#667085] mb-4">Loading documents…</p>}
       {docsError && <p className="text-[14px] text-[#b42318] mb-4">{docsError}</p>}
 
-      {/* Table */}
+      {/* Table or empty state */}
       {!loadingDocs && (
-        <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Document Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Upload Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Uploaded By
-                </th>
-                <th className="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {(() => {
-                const filtered = documents.filter(doc => {
-                  if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-                  if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
-                  if (uploadDateFrom || uploadDateTo) {
-                    const d = parseDate(doc.uploadDate);
-                    if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
-                    if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
-                  }
-                  return true;
-                });
-                if (filtered.length === 0) {
-                  return <tr><td colSpan={5} className="px-6 py-12 text-center text-[14px] text-[#667085]">No documents found. Upload one to get started.</td></tr>;
-                }
-                return filtered.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                        {doc.title}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                      {doc.type}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                      {doc.uploadDate}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
-                      <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => openDocument(doc.id)}
-                          className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
-                        >
-                          <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          Open
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(doc.id)}
-                          className="flex items-center gap-1.5 h-[32px] px-3 border border-[#fecdca] rounded-lg text-[12px] text-[#b42318] hover:bg-[#fef3f2] transition-colors"
-                        >
-                          <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M2.5 5H17.5M15.8333 5L15 16.6667C15 17.1269 14.8127 17.5681 14.4794 17.8933C14.1461 18.2185 13.6938 18.4007 13.2222 18.4007H6.77778C6.30618 18.4007 5.85395 18.2185 5.52063 17.8933C5.1873 17.5681 5 17.1269 5 16.6667L4.16667 5M7.5 5V3.33333C7.5 3.11232 7.5878 2.90036 7.74408 2.74408C7.90036 2.5878 8.11232 2.5 8.33333 2.5H11.6667C11.8877 2.5 12.0996 2.5878 12.2559 2.74408C12.4122 2.90036 12.5 3.11232 12.5 3.33333V5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+        <>
+          {documents.length === 0 ? (
+            /* Full empty state — no documents at all */
+            <div className="border border-dashed border-[#d0d5dd] rounded-[12px] flex flex-col items-center justify-center py-20 gap-4">
+              <div className="size-14 bg-[#f9fafb] border border-[#eaecf0] rounded-full flex items-center justify-center">
+                <svg className="size-7 text-[#98a2b3]" fill="none" viewBox="0 0 24 24">
+                  <path d="M12 16V8M12 8L8.5 11.5M12 8L15.5 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 15v2a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">No documents yet</p>
+                <p className="text-[13px] text-[#667085] mt-1 max-w-[280px]">Upload your first document to start extracting financial insights.</p>
+              </div>
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="h-[40px] px-5 bg-[#144430] rounded-[10px] text-[14px] text-white hover:bg-[#0f3324] transition-colors flex items-center gap-2"
+              >
+                <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                  <path d="M10 4.16667V15.8333M4.16667 10H15.8333" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Upload Document
+              </button>
+            </div>
+          ) : (
+            <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Document Title
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Upload Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Uploaded By
+                    </th>
+                    <th className="px-6 py-3"></th>
                   </tr>
-                ));
-              })()}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(() => {
+                    const filtered = documents.filter(doc => {
+                      if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+                      if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
+                      if (uploadDateFrom || uploadDateTo) {
+                        const d = parseDate(doc.uploadDate);
+                        if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
+                        if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
+                      }
+                      return true;
+                    });
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-[14px] text-[#667085]">
+                            No documents match your filters.
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return filtered.map((doc) => {
+                      const isProcessing = doc.processing || processingIds.has(doc.id);
+                      return (
+                        <tr key={doc.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center flex-wrap gap-1">
+                              <span className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
+                                {doc.title}
+                              </span>
+                              {isProcessing && (
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-[#fef0c7] text-[#dc6803] px-2 py-0.5 rounded-full font-medium ml-2">
+                                  <svg
+                                    className="animate-spin"
+                                    style={{ width: 10, height: 10 }}
+                                    viewBox="0 0 10 10"
+                                    fill="none"
+                                  >
+                                    <circle cx="5" cy="5" r="4" stroke="#dc6803" strokeWidth="1.5" strokeOpacity="0.3"/>
+                                    <path d="M5 1a4 4 0 0 1 4 4" stroke="#dc6803" strokeWidth="1.5" strokeLinecap="round"/>
+                                  </svg>
+                                  Processing
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                            {doc.type}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                            {doc.uploadDate}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
+                            <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => openDocument(doc.id)}
+                                disabled={isProcessing}
+                                className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                Open
+                              </button>
+                              <button
+                                onClick={() => setConfirmDelete(doc.id)}
+                                disabled={isProcessing}
+                                className="flex items-center gap-1.5 h-[32px] px-3 border border-[#fecdca] rounded-lg text-[12px] text-[#b42318] hover:bg-[#fef3f2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M2.5 5H17.5M15.8333 5L15 16.6667C15 17.1269 14.8127 17.5681 14.4794 17.8933C14.1461 18.2185 13.6938 18.4007 13.2222 18.4007H6.77778C6.30618 18.4007 5.85395 18.2185 5.52063 17.8933C5.1873 17.5681 5 17.1269 5 16.6667L4.16667 5M7.5 5V3.33333C7.5 3.11232 7.5878 2.90036 7.74408 2.74408C7.90036 2.5878 8.11232 2.5 8.33333 2.5H11.6667C11.8877 2.5 12.0996 2.5878 12.2559 2.74408C12.4122 2.90036 12.5 3.11232 12.5 3.33333V5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
       {/* Confirm Delete Dialog */}
@@ -447,7 +535,7 @@ export default function Documents() {
                   <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="none">
                     <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Analysis complete. Extracted metrics and any flagged discrepancies will appear in their respective tabs.</span>
+                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Upload started. Documents are being analyzed in the background — watch for the Processing badge in the table.</span>
                 </div>
 
                 <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-4">

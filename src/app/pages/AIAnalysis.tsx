@@ -425,7 +425,21 @@ export default function AIAnalysis() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(discrepancies.length > 0 ? discrepancies.map((d) => ({
+                {discrepancies.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="size-12 bg-[#ecfdf3] rounded-full flex items-center justify-center">
+                          <svg className="size-6 text-[#027a48]" fill="none" viewBox="0 0 24 24">
+                            <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <p className="font-['Figtree:Medium',sans-serif] font-medium text-[15px] text-black">No discrepancies flagged</p>
+                        <p className="text-[13px] text-[#667085]">Your documents appear consistent.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (discrepancies.map((d) => ({
                   title: (d.description ?? d.title ?? "Anomaly") as string,
                   id: d.id as string,
                   level: ((d.severity ?? d.level ?? "medium") as string).charAt(0).toUpperCase() + ((d.severity ?? d.level ?? "medium") as string).slice(1),
@@ -472,7 +486,7 @@ export default function AIAnalysis() {
                       {issue.dateFlagged}
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -499,7 +513,21 @@ export default function AIAnalysis() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(ingestionLog.length > 0 ? ingestionLog.map((d) => ({
+                {ingestionLog.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="size-12 bg-[#f9fafb] border border-[#eaecf0] rounded-full flex items-center justify-center">
+                          <svg className="size-6 text-[#98a2b3]" fill="none" viewBox="0 0 24 24">
+                            <path d="M9 12h6M9 16h6M7 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 4a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <p className="font-['Figtree:Medium',sans-serif] font-medium text-[15px] text-black">No ingestion records found</p>
+                        <p className="text-[13px] text-[#667085]">Upload and analyze documents to see ingestion history here.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (ingestionLog.map((d) => ({
                   name: (d.fileName ?? d.name ?? "Document") as string,
                   numberOfDocs: String(d.numberOfDocs ?? 1),
                   uploadDate: (d.uploadDate ?? "—") as string,
@@ -525,7 +553,7 @@ export default function AIAnalysis() {
                       <div className="text-[12px] text-gray-500">{item.role}</div>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -548,6 +576,19 @@ export default function AIAnalysis() {
               ))}
             </div>
           </div>
+
+          {/* Key Metrics empty state — shown when analysis loaded but no metrics extracted */}
+          {discrepancies.length === 0 && ingestionLog.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 border border-dashed border-[#eaecf0] rounded-[12px] mb-6">
+              <div className="size-12 bg-[#f9fafb] border border-[#eaecf0] rounded-full flex items-center justify-center">
+                <svg className="size-6 text-[#98a2b3]" fill="none" viewBox="0 0 24 24">
+                  <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[15px] text-black">No key metrics extracted</p>
+              <p className="text-[13px] text-[#667085] text-center max-w-[320px]">Upload financial documents and run analysis to see extracted metrics here.</p>
+            </div>
+          )}
 
           {/* Tab content */}
           <div className="w-full">
