@@ -1,23 +1,57 @@
 
-import { useState, useEffect } from "react";
-import { getDiscrepancies, getIngestionLog, uploadDocument, pollJobStatus } from "../../api";
+import { useState, useEffect, useRef } from "react";
+import { getDiscrepancies, getIngestionLog, uploadDocument, pollJobStatus, getDocuments } from "../../api";
 import FilterButton from "../components/FilterButton";
+import { useDocumentContext } from "../../contexts/DocumentContext";
 
 export default function AIAnalysis() {
+  const { activeDocument, setActiveDocument } = useDocumentContext();
   const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('keyMetrics');
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
   const [discrepancies, setDiscrepancies] = useState<Record<string, unknown>[]>([]);
   const [ingestionLog, setIngestionLog] = useState<Record<string, unknown>[]>([]);
+  const [analysisLoaded, setAnalysisLoaded] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+
+  // Document selector for analysis
+  const [documents, setDocuments] = useState<{ id: number; name: string; uploadedAt: string }[]>([]);
+  const [docDropdownOpen, setDocDropdownOpen] = useState(false);
+  const docDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    getDocuments()
+      .then((data: unknown) => {
+        const docs = (data as Record<string, unknown>[]).map(d => ({
+          id: d.id as number,
+          name: (d.originalFilename ?? d.filename ?? `Document #${d.id}`) as string,
+          uploadedAt: (d.uploadedAt ?? d.createdAt ?? "") as string,
+        }));
+        setDocuments(docs);
+      })
+      .catch(() => {});
+
+    const handler = (e: MouseEvent) => {
+      if (docDropdownRef.current && !docDropdownRef.current.contains(e.target as Node)) {
+        setDocDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Only load analysis data when user explicitly triggers it
+  const loadAnalysis = () => {
+    if (!activeDocument) return;
+    setAnalysisLoading(true);
     Promise.all([
       getDiscrepancies().catch(() => []),
       getIngestionLog().catch(() => []),
     ]).then(([disc, log]) => {
       setDiscrepancies(disc as Record<string, unknown>[]);
       setIngestionLog(log as Record<string, unknown>[]);
-    });
-  }, []);
+      setAnalysisLoaded(true);
+    }).finally(() => setAnalysisLoading(false));
+  };
 
 
   // Modal + confirmation state
@@ -177,8 +211,8 @@ export default function AIAnalysis() {
   ];
 
   return (
-    <div className="bg-white h-full w-full p-8">
-      <div className="flex justify-between items-start mb-8">
+    <div className="bg-white h-full w-full p-8 overflow-y-auto">
+      <div className="flex justify-between items-start mb-6">
         <div className="flex flex-col gap-[8px]">
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
             AI Analysis
@@ -186,24 +220,108 @@ export default function AIAnalysis() {
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">Extract key findings from uploaded documents with AI</p>
         </div>
 
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
-        >
-          <svg className="size-5" fill="none" viewBox="0 0 20 20">
-            <path
-              d="M10 4.16667V15.8333M4.16667 10H15.8333"
-              stroke="#344054"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
-            Upload & Analyze Documents
-          </p>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="size-5" fill="none" viewBox="0 0 20 20">
+              <path d="M10 4.16667V15.8333M4.16667 10H15.8333" stroke="#344054" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
+              Upload & Analyze Documents
+            </p>
+          </button>
+        </div>
       </div>
+
+      {/* Document selector + Load Analysis bar */}
+      <div className="flex items-center gap-3 mb-6 p-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[12px]">
+        <svg className="size-5 text-[#667085] shrink-0" fill="none" viewBox="0 0 20 20">
+          <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        <p className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054] shrink-0">Select Document to Analyze</p>
+
+        <div className="relative" ref={docDropdownRef}>
+          <button
+            onClick={() => setDocDropdownOpen(o => !o)}
+            disabled={documents.length === 0}
+            className={`flex items-center gap-2 h-[36px] px-4 border rounded-[8px] text-[13px] transition-colors min-w-[220px] ${
+              activeDocument ? "border-[#144430] bg-[#f0f9f4] text-[#144430]" : "border-[#d0d5dd] bg-white text-[#667085] hover:bg-gray-50"
+            } disabled:opacity-50`}
+          >
+            <span className="flex-1 text-left truncate">
+              {documents.length === 0 ? "No documents uploaded" : activeDocument ? activeDocument.name : "Choose a document…"}
+            </span>
+            <svg className={`size-4 shrink-0 transition-transform ${docDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 20 20">
+              <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
+          {docDropdownOpen && documents.length > 0 && (
+            <div className="absolute top-[40px] left-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl min-w-[280px] overflow-hidden">
+              <div className="max-h-[220px] overflow-y-auto py-1">
+                {documents.map(doc => (
+                  <button
+                    key={doc.id}
+                    onClick={() => { setActiveDocument({ id: doc.id, name: doc.name, uploadedAt: doc.uploadedAt }); setDocDropdownOpen(false); setAnalysisLoaded(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${activeDocument?.id === doc.id ? "bg-[#f0f9f4]" : ""}`}
+                  >
+                    <div className={`size-4 rounded-full border-2 shrink-0 flex items-center justify-center ${activeDocument?.id === doc.id ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"}`}>
+                      {activeDocument?.id === doc.id && <div className="size-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[13px] text-[#344054] truncate">{doc.name}</span>
+                      {doc.uploadedAt && (
+                        <span className="text-[10px] text-[#98a2b3]">
+                          {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={loadAnalysis}
+          disabled={!activeDocument || analysisLoading}
+          className="flex items-center gap-2 h-[36px] px-5 bg-[#144430] text-white rounded-[8px] text-[13px] font-medium hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {analysisLoading ? (
+            <><svg className="size-4 animate-spin" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" strokeDasharray="25 50"/></svg>Loading…</>
+          ) : (
+            <><svg className="size-4" fill="none" viewBox="0 0 20 20"><path d="M10 3v3M10 14v3M3 10h3M14 10h3M5.05 5.05l2.12 2.12M12.83 12.83l2.12 2.12M5.05 14.95l2.12-2.12M12.83 7.17l2.12-2.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Load Analysis</>
+          )}
+        </button>
+
+        {activeDocument && analysisLoaded && (
+          <span className="text-[12px] text-[#027a48] font-medium">Analysis loaded for: {activeDocument.name}</span>
+        )}
+        {!activeDocument && (
+          <span className="text-[12px] text-[#98a2b3]">No document selected — select one to begin</span>
+        )}
+      </div>
+
+      {/* Latent state — show placeholder when no analysis loaded yet */}
+      {!analysisLoaded && !analysisLoading && (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 border border-dashed border-[#eaecf0] rounded-[12px] mb-6">
+          <svg className="size-12 text-[#d0d5dd]" fill="none" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2"/>
+            <path d="M16 24h16M24 16v16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <p className="text-[15px] font-medium text-[#667085]">Analysis Workspace</p>
+          <p className="text-[13px] text-[#98a2b3] text-center max-w-[320px]">
+            Select a document above and click <strong>Load Analysis</strong> to populate discrepancies, metrics, and ingestion data.
+          </p>
+        </div>
+      )}
+
+      {/* Tabs — only visible when analysis is loaded */}
+      {(analysisLoaded || analysisLoading) && <></> /* tabs shown below */ }
+      {analysisLoaded && <>
 
       {/* Tabs */}
       <div className="border-b border-[#e8eef7] mb-6">
@@ -308,7 +426,7 @@ export default function AIAnalysis() {
                   dateFlagged: d.createdAt ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—",
                   type: "",
                   aiConfidence: d.confidenceScore != null ? `${Math.round(Number(d.confidenceScore) * (Number(d.confidenceScore) <= 1 ? 100 : 1))}%` : "—",
-                })) : mockIssues).filter(issue => {
+                })).filter(issue => {
                   if (issueLevelFilter.length > 0 && !issueLevelFilter.includes(issue.level)) return false;
                   if (dateFlaggedFrom || dateFlaggedTo) {
                     const d = parseDate(issue.dateFlagged);
@@ -382,7 +500,7 @@ export default function AIAnalysis() {
                   uploadDate: (d.uploadDate ?? "—") as string,
                   uploadedBy: (d.uploadedBy ?? "Admin") as string,
                   role: "Administrator",
-                })) : mockIngestionData).map((item, index) => (
+                })).map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
@@ -814,6 +932,10 @@ export default function AIAnalysis() {
         </div>
       )}
 
+
+    </div>
+
+      </>}
 
     </div>
   );

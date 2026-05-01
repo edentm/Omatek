@@ -83,6 +83,13 @@ export const getDashboardMetrics = async () => {
   //            latestHealthScore, anomalyCount }
 }
 
+export const getStockData = async () => {
+  const res = await authFetch('/api/dashboard/stock')
+  if (!res.ok) return { sharePrice: null, marketCap: null, source: 'unavailable' }
+  return res.json()
+  // Returns: { sharePrice, marketCap, currency, previousClose, source, timestamp }
+}
+
 export const getDashboardCharts = async () => {
   const res = await authFetch('/api/dashboard/charts')
   if (!res.ok) throw new Error('Failed to fetch chart data')

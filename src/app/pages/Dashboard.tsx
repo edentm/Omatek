@@ -1,12 +1,8 @@
-import { useState, useEffect } from "react";
-import { getDashboardMetrics, getDashboardCharts } from "../../api";
+import { useState, useEffect, useRef } from "react";
+import { getDashboardMetrics, getDashboardCharts, getDocuments, getReports, getStockData } from "../../api";
+import { useDocumentContext } from "../../contexts/DocumentContext";
 
 type Metrics = {
-  revenue?: number
-  expenses?: number
-  newClients?: number
-  sharePrice?: number
-  marketCap?: number
   totalDocuments?: number
   totalReports?: number
   latestHealthScore?: number
@@ -16,7 +12,7 @@ type Metrics = {
 type TrendPoint = { date: string; score: number; documentName: string }
 type MetricPoint = { date: string; value: string; documentName: string }
 
-const fmt = (val?: number) => {
+const fmt = (val?: number | null) => {
   if (val == null) return "—"
   if (val >= 1_000_000_000) return `₦${(val / 1_000_000_000).toFixed(2)}B`
   if (val >= 1_000_000) return `₦${(val / 1_000_000).toFixed(1)}M`
@@ -27,6 +23,29 @@ const fmt = (val?: number) => {
 const parseVal = (v: string): number => {
   const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ""))
   return isNaN(n) ? 0 : n
+}
+
+function SourceTag({ name, date }: { name: string; date: string }) {
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      <svg className="size-3 text-[#98a2b3] shrink-0" fill="none" viewBox="0 0 12 12">
+        <path d="M2 2h8v8H2zM4 4h4M4 6h4M4 8h2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      </svg>
+      <span className="text-[10px] text-[#98a2b3] truncate" title={`${name} · ${date}`}>
+        {name.length > 18 ? name.slice(0, 18) + "…" : name} · {date}
+      </span>
+    </div>
+  )
+}
+
+function PendingState({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[24px] font-['Figtree:Medium',sans-serif] font-medium text-[#d0d5dd]">—</p>
+      <p className="text-[11px] text-[#98a2b3]">Pending Source Selection</p>
+      <p className="text-[10px] text-[#c4c9d4]">Select a document above to load {label}</p>
+    </div>
+  )
 }
 
 function MiniLineChart({
@@ -59,7 +78,6 @@ function MiniLineChart({
 
   const polyline = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ")
 
-  // Filled area path
   const areaPath = `M${x(0)},${y(points[0].value)} ` +
     points.slice(1).map((p, i) => `L${x(i + 1)},${y(p.value)}`).join(" ") +
     ` L${x(points.length - 1)},${H - pad} L${x(0)},${H - pad} Z`
@@ -92,6 +110,7 @@ function MiniLineChart({
 }
 
 export default function Dashboard() {
+  const { activeDocument, setActiveDocument } = useDocumentContext()
   const [metrics, setMetrics] = useState<Metrics>({})
   const [loading, setLoading] = useState(true)
   const [healthTrend, setHealthTrend] = useState<TrendPoint[]>([])
@@ -99,12 +118,38 @@ export default function Dashboard() {
   const [expenseTrend, setExpenseTrend] = useState<MetricPoint[]>([])
   const [trendSummary, setTrendSummary] = useState<{ trend: string; averageHealthScore: number } | null>(null)
 
+  // Document-specific financials (null = not selected yet)
+  const [docRevenue, setDocRevenue] = useState<string | null>(null)
+  const [docExpenses, setDocExpenses] = useState<string | null>(null)
+
+  // Stock data from Yahoo Finance
+  const [stockData, setStockData] = useState<{ sharePrice: number | null; marketCap: number | null; source: string; timestamp: number | null }>({
+    sharePrice: null, marketCap: null, source: "loading", timestamp: null
+  })
+
+  // Document selector
+  const [documents, setDocuments] = useState<{ id: number; name: string; uploadedAt: string }[]>([])
+  const [docDropdownOpen, setDocDropdownOpen] = useState(false)
+  const docDropdownRef = useRef<HTMLDivElement>(null)
+
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}")
   const firstName = storedUser?.name?.split(" ")[0] || "User"
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (docDropdownRef.current && !docDropdownRef.current.contains(e.target as Node)) {
+        setDocDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  // Load platform-level metrics + charts + stock on mount
   useEffect(() => {
     getDashboardMetrics()
-      .then(setMetrics)
+      .then((m: unknown) => setMetrics(m as Metrics))
       .catch(() => {})
       .finally(() => setLoading(false))
 
@@ -123,30 +168,63 @@ export default function Dashboard() {
         }
       })
       .catch(() => {})
+
+    getDocuments()
+      .then((data: unknown) => {
+        const docs = (data as Record<string, unknown>[]).map(d => ({
+          id: d.id as number,
+          name: (d.originalFilename ?? d.filename ?? `Document #${d.id}`) as string,
+          uploadedAt: (d.uploadedAt ?? d.createdAt ?? "") as string,
+        }))
+        setDocuments(docs)
+      })
+      .catch(() => {})
+
+    getStockData()
+      .then((s: unknown) => {
+        const sd = s as Record<string, unknown>
+        setStockData({
+          sharePrice: sd.sharePrice != null ? Number(sd.sharePrice) : null,
+          marketCap: sd.marketCap != null ? Number(sd.marketCap) : null,
+          source: String(sd.source ?? "unavailable"),
+          timestamp: sd.timestamp != null ? Number(sd.timestamp) : null,
+        })
+      })
+      .catch(() => {})
   }, [])
 
-  const cards = [
-    { label: "Revenue", value: fmt(metrics.revenue), subtext: "Latest period", change: metrics.revenue ? "From AI analysis" : "Upload a document", positive: true },
-    { label: "Expenses", value: fmt(metrics.expenses), subtext: "Latest period", change: metrics.expenses ? "From AI analysis" : "Upload a document", positive: false },
-    { label: "New Clients", value: metrics.newClients != null ? String(metrics.newClients) : "—", subtext: "From reports", change: metrics.newClients ? "Extracted by AI" : "Upload a document", positive: true },
-    { label: "Share Price", value: metrics.sharePrice != null ? `₦${metrics.sharePrice}` : "—", subtext: "NGX", change: metrics.sharePrice ? "From AI analysis" : "Upload a document", positive: true, sourceUrl: "https://afx.kwayisi.org/ngx/omatek.html" },
-    { label: "Market Cap", value: fmt(metrics.marketCap), subtext: "NGX", change: `${metrics.totalDocuments ?? 0} docs · ${metrics.totalReports ?? 0} reports`, positive: true, noArrow: true },
-  ]
+  // When active document changes, load its report's financials
+  useEffect(() => {
+    if (!activeDocument) {
+      setDocRevenue(null)
+      setDocExpenses(null)
+      return
+    }
+    getReports()
+      .then((data: unknown) => {
+        const reports = (data as Record<string, unknown>[])
+        const report = reports.find(r => r.documentId === activeDocument.id || r.document_id === activeDocument.id)
+        if (report && typeof report.keyMetrics === "object" && report.keyMetrics) {
+          const km = report.keyMetrics as Record<string, unknown>
+          const rev = km.totalRevenue ?? km.total_revenue ?? km.revenue ?? km.Revenue
+          const exp = km.totalExpenses ?? km.total_expenses ?? km.expenses ?? km.Expenses
+          setDocRevenue(rev != null ? String(rev) : null)
+          setDocExpenses(exp != null ? String(exp) : null)
+        } else {
+          setDocRevenue(null)
+          setDocExpenses(null)
+        }
+      })
+      .catch(() => {})
+  }, [activeDocument])
 
-  const revenueChartPoints = revenueTrend.map(p => ({
-    label: `${p.documentName} (${p.date})`,
-    value: parseVal(p.value),
-  }))
+  const stockTimestamp = stockData.timestamp
+    ? new Date(stockData.timestamp * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null
 
-  const expenseChartPoints = expenseTrend.map(p => ({
-    label: `${p.documentName} (${p.date})`,
-    value: parseVal(p.value),
-  }))
-
-  const healthChartPoints = healthTrend.map(p => ({
-    label: `${p.documentName} (${p.date})`,
-    value: p.score,
-  }))
+  const healthChartPoints = healthTrend.map(p => ({ label: `${p.documentName} (${p.date})`, value: p.score }))
+  const revenueChartPoints = revenueTrend.map(p => ({ label: `${p.documentName} (${p.date})`, value: parseVal(p.value) }))
+  const expenseChartPoints = expenseTrend.map(p => ({ label: `${p.documentName} (${p.date})`, value: parseVal(p.value) }))
 
   const trendBadge = trendSummary?.trend === "improving"
     ? { label: "Improving", color: "#027a48", bg: "#ecfdf3" }
@@ -154,43 +232,197 @@ export default function Dashboard() {
     ? { label: "Declining", color: "#b42318", bg: "#fef3f2" }
     : { label: "Stable", color: "#344054", bg: "#f2f4f7" }
 
+  const docSourceDate = activeDocument
+    ? new Date(activeDocument.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : ""
+
   return (
     <div className="bg-white h-full w-full p-8 overflow-y-auto">
-      <div className="flex flex-col gap-[8px] mb-8">
-        <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">Welcome, {firstName}</h1>
-        <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">View latest insights and complete needed tasks.</p>
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex flex-col gap-[4px]">
+          <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">Welcome, {firstName}</h1>
+          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">View latest insights and complete needed tasks.</p>
+        </div>
+
+        {/* Document selector */}
+        <div className="relative" ref={docDropdownRef}>
+          <button
+            onClick={() => setDocDropdownOpen(o => !o)}
+            disabled={documents.length === 0}
+            className={`flex items-center gap-2 h-[40px] px-4 border rounded-[10px] text-[13px] transition-colors min-w-[220px] ${
+              activeDocument
+                ? "border-[#144430] bg-[#f0f9f4] text-[#144430]"
+                : "border-[#d0d5dd] bg-white text-[#667085] hover:bg-gray-50"
+            } disabled:opacity-50`}
+          >
+            <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+              <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <span className="flex-1 text-left truncate">
+              {documents.length === 0 ? "No documents" : activeDocument ? activeDocument.name : "Select source document…"}
+            </span>
+            <svg className={`size-4 shrink-0 transition-transform ${docDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 20 20">
+              <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
+          {docDropdownOpen && (
+            <div className="absolute top-[44px] right-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl min-w-[280px] overflow-hidden">
+              {activeDocument && (
+                <div className="border-b border-[#eaecf0]">
+                  <button
+                    onClick={() => { setActiveDocument(null); setDocDropdownOpen(false) }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left text-[12px] text-[#b42318]"
+                  >
+                    Clear selection (show all-time data)
+                  </button>
+                </div>
+              )}
+              <div className="max-h-[240px] overflow-y-auto py-1">
+                {documents.map(doc => (
+                  <button
+                    key={doc.id}
+                    onClick={() => { setActiveDocument({ id: doc.id, name: doc.name, uploadedAt: doc.uploadedAt }); setDocDropdownOpen(false) }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${activeDocument?.id === doc.id ? "bg-[#f0f9f4]" : ""}`}
+                  >
+                    <div className={`size-4 rounded-full border-2 shrink-0 flex items-center justify-center ${activeDocument?.id === doc.id ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"}`}>
+                      {activeDocument?.id === doc.id && <div className="size-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[13px] text-[#344054] truncate">{doc.name}</span>
+                      {doc.uploadedAt && (
+                        <span className="text-[10px] text-[#98a2b3]">
+                          {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {loading && <p className="text-[14px] text-[#667085] mb-4">Loading metrics…</p>}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-5 gap-4 mb-8">
-        {cards.map((card: any) => (
-          <div key={card.label} className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
-            <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">{card.label}</p>
-            <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{card.value}</p>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1">
-                {!card.noArrow && (
-                  <svg className={`size-3.5 shrink-0 ${card.positive ? "text-[#027a48]" : "text-[#b42318]"}`} viewBox="0 0 14 14" fill="none">
-                    {card.positive
-                      ? <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      : <path d="M7 3V11M7 11L3 7M7 11L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>}
+        {/* Revenue — document-gated */}
+        <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
+          <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Revenue</p>
+          {activeDocument ? (
+            docRevenue ? (
+              <>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{docRevenue}</p>
+                <div className="flex items-center gap-1">
+                  <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                )}
-                <span className={`text-[12px] font-['Figtree:Medium',sans-serif] font-medium ${card.noArrow ? "text-[#667085]" : card.positive ? "text-[#027a48]" : "text-[#b42318]"}`}>{card.change}</span>
+                  <span className="text-[12px] font-medium text-[#027a48]">From AI analysis</span>
+                </div>
+                <SourceTag name={activeDocument.name} date={docSourceDate} />
+              </>
+            ) : (
+              <>
+                <p className="text-[24px] font-medium text-[#d0d5dd]">—</p>
+                <p className="text-[11px] text-[#98a2b3]">Not found in report</p>
+                <SourceTag name={activeDocument.name} date={docSourceDate} />
+              </>
+            )
+          ) : (
+            <PendingState label="revenue" />
+          )}
+        </div>
+
+        {/* Expenses — document-gated */}
+        <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
+          <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Expenses</p>
+          {activeDocument ? (
+            docExpenses ? (
+              <>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{docExpenses}</p>
+                <div className="flex items-center gap-1">
+                  <svg className="size-3.5 shrink-0 text-[#b42318]" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 3V11M7 11L3 7M7 11L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="text-[12px] font-medium text-[#b42318]">From AI analysis</span>
+                </div>
+                <SourceTag name={activeDocument.name} date={docSourceDate} />
+              </>
+            ) : (
+              <>
+                <p className="text-[24px] font-medium text-[#d0d5dd]">—</p>
+                <p className="text-[11px] text-[#98a2b3]">Not found in report</p>
+                <SourceTag name={activeDocument.name} date={docSourceDate} />
+              </>
+            )
+          ) : (
+            <PendingState label="expenses" />
+          )}
+        </div>
+
+        {/* Share Price — live from Yahoo Finance */}
+        <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
+          <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Share Price</p>
+          {stockData.source === "loading" ? (
+            <p className="text-[24px] font-medium text-[#d0d5dd]">…</p>
+          ) : stockData.sharePrice != null ? (
+            <>
+              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">₦{stockData.sharePrice.toFixed(2)}</p>
+              <span className="text-[12px] font-medium text-[#027a48]">Live market price</span>
+              {stockTimestamp && <SourceTag name="Yahoo Finance (OMATEK.LG)" date={stockTimestamp} />}
+            </>
+          ) : (
+            <>
+              <p className="text-[24px] font-medium text-[#d0d5dd]">—</p>
+              <a href="https://afx.kwayisi.org/ngx/omatek.html" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline hover:text-[#667085]">NGX</a>
+              <p className="text-[10px] text-[#c4c9d4]">Market data unavailable</p>
+            </>
+          )}
+        </div>
+
+        {/* Market Cap — live from Yahoo Finance */}
+        <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
+          <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Market Cap</p>
+          {stockData.source === "loading" ? (
+            <p className="text-[24px] font-medium text-[#d0d5dd]">…</p>
+          ) : stockData.marketCap != null ? (
+            <>
+              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{fmt(stockData.marketCap)}</p>
+              <span className="text-[12px] text-[#667085]">{metrics.totalDocuments ?? 0} docs · {metrics.totalReports ?? 0} reports</span>
+              {stockTimestamp && <SourceTag name="Yahoo Finance (OMATEK.LG)" date={stockTimestamp} />}
+            </>
+          ) : (
+            <>
+              <p className="text-[24px] font-medium text-[#d0d5dd]">—</p>
+              <span className="text-[12px] text-[#667085]">{metrics.totalDocuments ?? 0} docs · {metrics.totalReports ?? 0} reports</span>
+              <p className="text-[10px] text-[#c4c9d4]">Market data unavailable</p>
+            </>
+          )}
+        </div>
+
+        {/* Financial Health */}
+        <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
+          <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Health Score</p>
+          {metrics.latestHealthScore != null ? (
+            <>
+              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{metrics.latestHealthScore}<span className="text-[14px] text-[#667085]">/100</span></p>
+              <div className="w-full bg-[#eaecf0] rounded-full h-1.5">
+                <div className="h-1.5 rounded-full" style={{
+                  width: `${metrics.latestHealthScore}%`,
+                  background: metrics.latestHealthScore >= 70 ? "#027a48" : metrics.latestHealthScore >= 40 ? "#dc6803" : "#b42318"
+                }} />
               </div>
-              {card.sourceUrl ? (
-                <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">{card.subtext}</a>
-              ) : (
-                <p className="text-[11px] text-[#98a2b3]">{card.subtext}</p>
-              )}
-            </div>
-          </div>
-        ))}
+              <p className="text-[11px] text-[#98a2b3]">Latest report</p>
+            </>
+          ) : (
+            <PendingState label="health score" />
+          )}
+        </div>
       </div>
 
-      {/* Row 1: Health Score + Platform Summary */}
+      {/* Row 1: Health Score chart + Platform Summary */}
       <div className="grid grid-cols-2 gap-6 mb-6">
         {/* Financial Health Score */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-4">
@@ -278,17 +510,13 @@ export default function Dashboard() {
                 <MiniLineChart points={revenueChartPoints} color="#027a48" height={120} />
                 <div className="flex justify-between mt-2">
                   {revenueTrend.map((p, i) => (
-                    <div key={i} className="text-[9px] text-[#98a2b3] text-center truncate" style={{ flex: 1 }}>
-                      {p.date}
-                    </div>
+                    <div key={i} className="text-[9px] text-[#98a2b3] text-center truncate" style={{ flex: 1 }}>{p.date}</div>
                   ))}
                 </div>
               </>
             ) : revenueChartPoints.length === 1 ? (
               <div className="flex flex-col gap-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[32px] font-['Figtree:Medium',sans-serif] font-medium text-black">{fmt(revenueChartPoints[0].value)}</span>
-                </div>
+                <span className="text-[32px] font-['Figtree:Medium',sans-serif] font-medium text-black">{fmt(revenueChartPoints[0].value)}</span>
                 <p className="text-[12px] text-[#98a2b3]">From {revenueTrend[0]?.documentName}</p>
                 <p className="text-[12px] text-[#667085]">Upload more documents to see trend</p>
               </div>
@@ -316,17 +544,13 @@ export default function Dashboard() {
                 <MiniLineChart points={expenseChartPoints} color="#b42318" height={120} />
                 <div className="flex justify-between mt-2">
                   {expenseTrend.map((p, i) => (
-                    <div key={i} className="text-[9px] text-[#98a2b3] text-center truncate" style={{ flex: 1 }}>
-                      {p.date}
-                    </div>
+                    <div key={i} className="text-[9px] text-[#98a2b3] text-center truncate" style={{ flex: 1 }}>{p.date}</div>
                   ))}
                 </div>
               </>
             ) : expenseChartPoints.length === 1 ? (
               <div className="flex flex-col gap-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[32px] font-['Figtree:Medium',sans-serif] font-medium text-black">{fmt(expenseChartPoints[0].value)}</span>
-                </div>
+                <span className="text-[32px] font-['Figtree:Medium',sans-serif] font-medium text-black">{fmt(expenseChartPoints[0].value)}</span>
                 <p className="text-[12px] text-[#98a2b3]">From {expenseTrend[0]?.documentName}</p>
                 <p className="text-[12px] text-[#667085]">Upload more documents to see trend</p>
               </div>

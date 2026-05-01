@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Outlet } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AIAnalysis from "./pages/AIAnalysis";
@@ -8,11 +8,16 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Chat from "./pages/Chat";
 import DashboardLayout from "./components/DashboardLayout";
+import { DocumentProvider } from "../contexts/DocumentContext";
 
 function ProtectedRoute() {
   const token = localStorage.getItem("token");
   if (!token) return <Navigate to="/login" replace />;
-  return <DashboardLayout />;
+  return (
+    <DocumentProvider>
+      <DashboardLayout />
+    </DocumentProvider>
+  );
 }
 
 export const router = createBrowserRouter([
