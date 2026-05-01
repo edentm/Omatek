@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { askPlatform, getDocuments } from "../../api";
+import { useNavigate } from "react-router";
+import { askPlatform, getDocuments, generateCustomReport } from "../../api";
 
 type Message = { role: "user" | "assistant"; text: string; tokensUsed?: number; sourceRef?: string };
 type Doc = { id: number; title: string };
@@ -7,6 +8,7 @@ type Doc = { id: number; title: string };
 const TOKEN_BUDGET = 50000;
 
 export default function Chat() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", text: "Hi! I'm your Omatek financial analyst. Select one or more documents below, then ask me anything about your financial data — metrics, anomalies, trends, or anything from the reports." },
   ]);
@@ -18,6 +20,13 @@ export default function Chat() {
   const [sessionTokens, setSessionTokens] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Generate Report state
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState<number | null>(null); // report id
+  const [showDocPicker, setShowDocPicker] = useState(false);
+  const [pickerDocId, setPickerDocId] = useState<number | null>(null);
+  const docPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getDocuments()
@@ -38,6 +47,9 @@ export default function Chat() {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (docPickerRef.current && !docPickerRef.current.contains(e.target as Node)) {
+        setShowDocPicker(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -73,10 +85,12 @@ export default function Chat() {
     try {
       const res = await askPlatform(text, selectedDocIds) as Record<string, unknown>;
       const answer = (res.answer ?? res.response ?? res.message ?? JSON.stringify(res)) as string;
-      const tokensUsed = res.tokensUsed as number | undefined;
-      const sourceRef = res.sourceReference as string | undefined;
+      // Support both camelCase (after middleware) and snake_case fallback
+      const rawTokens = res.tokensUsed ?? res.tokens_used;
+      const tokensUsed = rawTokens != null ? Number(rawTokens) : undefined;
+      const sourceRef = (res.sourceReference ?? res.source_reference) as string | undefined;
       setMessages(prev => [...prev, { role: "assistant", text: answer, tokensUsed, sourceRef }]);
-      if (tokensUsed) setSessionTokens(prev => prev + tokensUsed);
+      if (tokensUsed != null && tokensUsed > 0) setSessionTokens(prev => prev + tokensUsed);
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -91,9 +105,51 @@ export default function Chat() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  // Build conversation context for report generation
+  const buildConversationContext = () => {
+    const convo = messages
+      .filter(m => m.text && m.role !== "assistant" || messages.indexOf(m) > 0)
+      .map(m => `${m.role === "user" ? "User" : "AI Analyst"}: ${m.text}`)
+      .join("\n\n");
+    return `Generate a structured financial audit report based on the following AI analysis conversation:\n\n${convo}`;
+  };
+
+  const doGenerateReport = async (docId: number) => {
+    setGeneratingReport(true);
+    setReportSuccess(null);
+    setShowDocPicker(false);
+    try {
+      const doc = documents.find(d => d.id === docId);
+      const res = await generateCustomReport({
+        documentId: docId,
+        customInstructions: buildConversationContext(),
+        title: `Chat Report — ${doc?.title ?? `Document #${docId}`}`,
+      }) as Record<string, unknown>;
+      const reportId = res.id as number;
+      setReportSuccess(reportId);
+    } catch {
+      alert("Failed to generate report. Please try again.");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const handleGenerateReport = () => {
+    if (selectedDocIds.length === 0) return;
+    if (selectedDocIds.length === 1) {
+      doGenerateReport(selectedDocIds[0]);
+    } else {
+      setPickerDocId(selectedDocIds[0]);
+      setShowDocPicker(true);
+    }
+  };
+
   const tokensRemaining = TOKEN_BUDGET - sessionTokens;
   const tokenPct = Math.min((sessionTokens / TOKEN_BUDGET) * 100, 100);
   const tokenColor = tokenPct > 80 ? "#b42318" : tokenPct > 50 ? "#dc6803" : "#027a48";
+
+  // Count real conversation turns (exclude the initial greeting)
+  const conversationTurns = messages.filter(m => m.role === "user").length;
 
   return (
     <div className="bg-white h-full w-full flex flex-col">
@@ -118,7 +174,7 @@ export default function Chat() {
         </div>
 
         {/* Document dropdown */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054] shrink-0">Source Documents</span>
 
           <div className="relative" ref={dropdownRef}>
@@ -224,7 +280,95 @@ export default function Chat() {
               Clear
             </button>
           )}
+
+          {/* Generate Report button — only visible after at least one exchange */}
+          {conversationTurns > 0 && selectedDocIds.length > 0 && (
+            <div className="relative ml-auto" ref={docPickerRef}>
+              <button
+                onClick={handleGenerateReport}
+                disabled={generatingReport}
+                className="flex items-center gap-2 h-[38px] px-4 bg-[#144430] text-white rounded-[10px] text-[13px] font-['Figtree:Medium',sans-serif] font-medium hover:bg-[#0f3324] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingReport ? (
+                  <>
+                    <svg className="size-4 animate-spin" viewBox="0 0 20 20" fill="none">
+                      <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" strokeDasharray="25 50" />
+                    </svg>
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                      <path d="M10.5 3H5a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2V9.5M10.5 3L16 8.5M10.5 3v5.5H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Generate Report
+                  </>
+                )}
+              </button>
+
+              {/* Document picker when multiple docs selected */}
+              {showDocPicker && (
+                <div className="absolute top-[42px] right-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl w-[300px] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#eaecf0]">
+                    <p className="text-[13px] font-semibold text-[#344054]">Select document for report</p>
+                    <p className="text-[11px] text-[#667085] mt-0.5">The report will be generated using the conversation as context</p>
+                  </div>
+                  <div className="max-h-[220px] overflow-y-auto py-1">
+                    {selectedDocIds.map(id => {
+                      const doc = documents.find(d => d.id === id);
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => setPickerDocId(id)}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${pickerDocId === id ? "bg-[#f0f9f4]" : ""}`}
+                        >
+                          <div className={`size-4 rounded-full border-2 flex items-center justify-center shrink-0 ${pickerDocId === id ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"}`}>
+                            {pickerDocId === id && <div className="size-1.5 rounded-full bg-white" />}
+                          </div>
+                          <span className="text-[13px] text-[#344054] truncate">{doc?.title ?? `Document #${id}`}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="px-4 py-3 border-t border-[#eaecf0] flex justify-end gap-2 bg-gray-50">
+                    <button onClick={() => setShowDocPicker(false)} className="text-[12px] text-[#667085] hover:text-[#344054] px-3 py-1.5">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => pickerDocId && doGenerateReport(pickerDocId)}
+                      disabled={!pickerDocId}
+                      className="text-[12px] font-semibold bg-[#144430] text-white px-4 py-1.5 rounded-[8px] hover:bg-[#0f3324] disabled:opacity-50"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Report generation success banner */}
+        {reportSuccess && (
+          <div className="mt-4 flex items-center gap-3 px-4 py-3 bg-[#f0f9f4] border border-[#abefc6] rounded-[10px]">
+            <svg className="size-5 text-[#17b26a] shrink-0" fill="none" viewBox="0 0 20 20">
+              <path d="M6.667 10l2.222 2.222L13.333 7.778" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
+            <p className="text-[13px] text-[#144430] flex-1">Report generated successfully!</p>
+            <button
+              onClick={() => navigate("/reports")}
+              className="text-[12px] font-semibold text-[#144430] underline hover:no-underline shrink-0"
+            >
+              View Reports →
+            </button>
+            <button onClick={() => setReportSuccess(null)} className="text-[#667085] hover:text-[#344054]">
+              <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -246,9 +390,9 @@ export default function Chat() {
               }`}>
                 {msg.text}
               </div>
-              {(msg.tokensUsed || msg.sourceRef) && (
+              {(msg.tokensUsed != null || msg.sourceRef) && (
                 <div className="flex flex-col gap-0.5 px-1">
-                  {msg.tokensUsed && (
+                  {msg.tokensUsed != null && msg.tokensUsed > 0 && (
                     <div className="text-[10px] text-[#98a2b3]">~{msg.tokensUsed.toLocaleString()} tokens used</div>
                   )}
                   {msg.sourceRef && (
