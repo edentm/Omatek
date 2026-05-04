@@ -180,70 +180,6 @@ export default function DashboardLayout() {
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col gap-[4px] pt-[16px] px-[8px]">
 
-              {/* Notifications Bell */}
-              <div className="relative" ref={notifRef}>
-                <button
-                  onClick={handleOpenNotifications}
-                  className="h-[45px] rounded-[10px] w-full text-left transition-colors hover:bg-[#f0f0f0]"
-                >
-                  <div className="flex items-center gap-[12px] pl-[16px]">
-                    <div className="relative shrink-0">
-                      <Bell className="size-[20px]" strokeWidth={1.66667} color="#344054" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-[2px] bg-[#b42318] rounded-full text-white text-[9px] font-semibold flex items-center justify-center">
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[21px] text-[14px] text-[#344054]">
-                      Notifications
-                    </p>
-                  </div>
-                </button>
-
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <div className="absolute left-full top-0 ml-2 z-[200] w-[280px] bg-white border border-[#eaecf0] rounded-[12px] shadow-lg overflow-hidden">
-                    <div className="flex items-center justify-between px-[12px] py-[10px] border-b border-[#eaecf0]">
-                      <p className="font-semibold text-[13px] text-[#101828]">Notifications</p>
-                      {notifications.length > 0 && (
-                        <button
-                          onClick={() => {
-                            const updated = notifications.map((n) => ({ ...n, read: true }));
-                            setNotifications(updated);
-                            try {
-                              localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
-                            } catch {
-                              // ignore
-                            }
-                          }}
-                          className="text-[11px] text-[#667085] hover:text-[#344054] transition-colors"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-[300px] overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <p className="text-[12px] text-[#667085] text-center py-[20px]">
-                          No notifications yet
-                        </p>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div
-                            key={notif.id}
-                            className={`px-[12px] py-[10px] border-b border-[#f2f4f7] last:border-0 ${!notif.read ? "bg-[#f9fafb]" : ""}`}
-                          >
-                            <p className="text-[12px] text-[#344054] leading-[18px]">{notif.text}</p>
-                            <p className="text-[10px] text-[#98a2b3] mt-[2px]">{relativeTime(notif.time)}</p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* Dashboard */}
               <button onClick={() => navigate("/dashboard")} className={navBtn("/dashboard").btn}>
                 <div className="flex items-center gap-[12px] pl-[16px]">
@@ -289,22 +225,22 @@ export default function DashboardLayout() {
                 </div>
               </button>
 
-              {/* Users — admin only */}
-              {isAdmin && (
-                <button onClick={() => navigate("/users")} className={navBtn("/users").btn}>
-                  <div className="flex items-center gap-[12px] pl-[16px]">
-                    <Users className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/users").icon} />
-                    <p className={navBtn("/users").text}>Users</p>
-                  </div>
-                </button>
-              )}
-
               {/* Audit Log — admin only */}
               {isAdmin && (
                 <button onClick={() => navigate("/audit-log")} className={navBtn("/audit-log").btn}>
                   <div className="flex items-center gap-[12px] pl-[16px]">
                     <ClipboardList className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/audit-log").icon} />
                     <p className={navBtn("/audit-log").text}>Audit Log</p>
+                  </div>
+                </button>
+              )}
+
+              {/* Users — admin only */}
+              {isAdmin && (
+                <button onClick={() => navigate("/users")} className={navBtn("/users").btn}>
+                  <div className="flex items-center gap-[12px] pl-[16px]">
+                    <Users className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/users").icon} />
+                    <p className={navBtn("/users").text}>Users</p>
                   </div>
                 </button>
               )}

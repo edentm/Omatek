@@ -413,7 +413,7 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
 
         {/* Revenue */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
@@ -500,30 +500,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Health Score — document-gated */}
-        <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
-          <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Health Score</p>
-          {!activeDocument ? (
-            <SelectDocState label="health score" />
-          ) : docLoading ? (
-            <div className="h-8 w-16 bg-[#f2f4f7] rounded animate-pulse" />
-          ) : docFinancials?.healthScore != null ? (
-            <>
-              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] leading-tight" style={{ color: healthColor }}>
-                {docFinancials.healthScore}<span className="text-[14px] text-[#667085]">/100</span>
-              </p>
-              <div className="w-full bg-[#eaecf0] rounded-full h-1.5">
-                <div className="h-1.5 rounded-full" style={{ width: `${docFinancials.healthScore}%`, background: healthColor }} />
-              </div>
-              {docFinancials.healthRating && (
-                <p className="text-[11px] font-semibold" style={{ color: healthColor }}>{docFinancials.healthRating}</p>
-              )}
-              <SourceTag name={activeDocument.name} date={docSourceDate} />
-            </>
-          ) : (
-            <NoDataState label="Health score" />
-          )}
-        </div>
       </div>
 
       {/* Row 2: Financial Health Chart + Platform Summary */}

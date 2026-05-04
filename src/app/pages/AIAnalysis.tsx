@@ -347,7 +347,17 @@ export default function AIAnalysis() {
         </button>
 
         {activeDocument && analysisLoaded && (
-          <span className="text-[12px] text-[#027a48] font-medium">Analysis loaded for: {activeDocument.name}</span>
+          <>
+            <span className="text-[12px] text-[#027a48] font-medium">Analysis loaded for: {activeDocument.name}</span>
+            <button
+              onClick={() => { setAnalysisLoaded(false); setDiscrepancies([]); setIngestionLog([]); }}
+              title="Close analysis"
+              className="ml-auto flex items-center gap-1 px-3 h-[32px] border border-[#d0d5dd] rounded-[8px] text-[12px] text-[#667085] hover:bg-[#f9fafb] transition-colors"
+            >
+              <svg className="size-3.5" fill="none" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              Close
+            </button>
+          </>
         )}
         {!activeDocument && (
           <span className="text-[12px] text-[#98a2b3]">No document selected — select one to begin</span>
