@@ -461,7 +461,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Share Price — always live, not document-gated */}
+        {/* Share Price — NGX live */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
           <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Share Price</p>
           {stockData.source === "loading" ? (
@@ -469,18 +469,20 @@ export default function Dashboard() {
           ) : stockData.sharePrice != null ? (
             <>
               <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">₦{stockData.sharePrice.toFixed(2)}</p>
-              <span className="text-[12px] font-medium text-[#027a48]">Live market price</span>
-              {stockTimestamp && <SourceTag name="Yahoo Finance (OMATEK.LG)" date={stockTimestamp} />}
+              <span className="text-[12px] font-medium text-[#027a48]">Live NGX price</span>
+              {stockTimestamp && <SourceTag name="NGX (OMATEK)" date={stockTimestamp} />}
             </>
           ) : (
             <>
               <p className="text-[24px] font-medium text-[#d0d5dd]">—</p>
-              <p className="text-[11px] text-[#98a2b3]">Market data unavailable</p>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff8e1] border border-[#f5c518] text-[10px] font-semibold text-[#b45309]">
+                Trading Suspended · NGX
+              </span>
             </>
           )}
         </div>
 
-        {/* Market Cap — always live */}
+        {/* Market Cap — NGX live */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
           <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Market Cap</p>
           {stockData.source === "loading" ? (
@@ -489,13 +491,14 @@ export default function Dashboard() {
             <>
               <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{fmt(stockData.marketCap)}</p>
               <span className="text-[12px] text-[#667085]">{platformMetrics.totalDocuments ?? 0} docs · {platformMetrics.totalReports ?? 0} reports</span>
-              {stockTimestamp && <SourceTag name="Yahoo Finance (OMATEK.LG)" date={stockTimestamp} />}
+              {stockTimestamp && <SourceTag name="NGX (OMATEK)" date={stockTimestamp} />}
             </>
           ) : (
             <>
               <p className="text-[24px] font-medium text-[#d0d5dd]">—</p>
-              <span className="text-[12px] text-[#667085]">{platformMetrics.totalDocuments ?? 0} docs · {platformMetrics.totalReports ?? 0} reports</span>
-              <p className="text-[11px] text-[#98a2b3]">Market data unavailable</p>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff8e1] border border-[#f5c518] text-[10px] font-semibold text-[#b45309]">
+                Trading Suspended · NGX
+              </span>
             </>
           )}
         </div>
