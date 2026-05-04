@@ -267,7 +267,15 @@ export default function Chat() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">Ask AI</h1>
-              <p className="text-[14px] text-[#667085] mt-0.5">Ask questions about your uploaded financial documents</p>
+              <div className="flex items-center gap-3 mt-0.5">
+                <p className="text-[14px] text-[#667085]">Ask questions about your uploaded financial documents</p>
+                {conversationTurns > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#f0f9f4] border border-[#abefc6] rounded-full text-[11px] font-semibold text-[#027a48]">
+                    <svg className="size-3" fill="none" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/><path d="M6 4v3M6 8.5h.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                    {conversationTurns} turn{conversationTurns !== 1 ? 's' : ''} this session
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {conversationTurns > 0 && (

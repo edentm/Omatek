@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { getTokenBalance } from "../../api";
+import { getTokenBalance } from "../api";
 
 const DEFAULT_BUDGET = 1_000_000;
 

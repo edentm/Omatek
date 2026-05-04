@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
-import { getReports, getReport, finalizeReport, exportReportCSV, exportReportPresentation, fetchReportPresentationHTML, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
+import { getReports, getReport, editReport, finalizeReport, exportReportCSV, exportReportPresentation, fetchReportPresentationHTML, generateCustomReport, getDocuments, getScorecard, getFraudScore } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 
 export default function Reports() {
@@ -105,6 +105,9 @@ export default function Reports() {
   const openReport = async (report: Report) => {
     setSelectedReport(report);
     setIsEditing(false);
+    setEditedSummary("");
+    setEditSaveError(null);
+    setFinalizeError(null);
     setActiveReportTab('summary');
 
     if (!report.apiId) {
@@ -141,6 +144,10 @@ export default function Reports() {
 
   const [scorecardError, setScorecardError] = useState<string | null>(null);
   const [fraudError, setFraudError] = useState<string | null>(null);
+  const [editedSummary, setEditedSummary] = useState<string>("");
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
 
   const loadScorecard = async () => {
     if (!selectedReport || !selectedReport.apiId) return;
@@ -279,10 +286,12 @@ export default function Reports() {
           const confidence = r.confidenceScore as number | null;
           const confidenceStr = confidence != null ? `${Math.round(Number(confidence) * (Number(confidence) <= 1 ? 100 : 1))}%` : "—";
           const createdAt = (r.createdAt ?? "") as string;
-          const finalizedAt = null;
+          const finalizedAt = (r.signedAt ?? r.finalizedAt ?? r.signed_at ?? r.finalized_at ?? null) as string | null;
           const formatDate = (iso: string) => {
             const d = new Date(iso);
-            return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+            if (isNaN(d.getTime())) return iso;
+            return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) +
+              " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
           };
           return {
             apiId: r.id as number,
@@ -421,10 +430,10 @@ export default function Reports() {
                 Initial AI Confidence
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date Created
+                Date &amp; Time Created
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date Finalized
+                Date &amp; Time Finalized
               </th>
             </tr>
           </thead>
@@ -677,10 +686,24 @@ export default function Reports() {
                 {/* Summary tab */}
                 {activeReportTab === 'summary' && (
                   <div className="flex flex-col gap-4">
-                    {fullReportData?.executiveSummary && (
+                    {editSaveError && (
+                      <div className="px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px]">
+                        <p className="text-[12px] text-[#b42318]">{editSaveError}</p>
+                      </div>
+                    )}
+                    {(fullReportData?.executiveSummary || fullReportData?.executive_summary || isEditing) && (
                       <div>
                         <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-2">Executive Summary</div>
-                        <p className="text-[13px] text-[#475467] leading-[22px]">{String(fullReportData.executiveSummary)}</p>
+                        {isEditing ? (
+                          <textarea
+                            value={editedSummary}
+                            onChange={(e) => setEditedSummary(e.target.value)}
+                            rows={8}
+                            className="w-full px-3 py-2.5 border border-[#144430] rounded-[8px] text-[13px] text-[#344054] leading-[22px] resize-none focus:outline-none focus:ring-1 focus:ring-[#144430]"
+                          />
+                        ) : (
+                          <p className="text-[13px] text-[#475467] leading-[22px]">{String(fullReportData?.executiveSummary ?? fullReportData?.executive_summary ?? '')}</p>
+                        )}
                       </div>
                     )}
                     {fullReportData?.keyMetrics && Object.keys(fullReportData.keyMetrics as object).length > 0 && (
@@ -844,18 +867,45 @@ export default function Reports() {
               {/* Footer Buttons — hidden for approved reports */}
               {selectedReport.status !== "Finalized" && (
                 <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white border-t-2 border-[#eaecf0]">
+                  {finalizeError && (
+                    <div className="mb-3 px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] flex items-start gap-2">
+                      <svg className="size-4 text-[#b42318] shrink-0 mt-0.5" fill="none" viewBox="0 0 16 16"><path d="M8 5v4M8 11h.01M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                      <p className="text-[11px] text-[#b42318] flex-1">{finalizeError}</p>
+                      <button onClick={() => setFinalizeError(null)} className="text-[#b42318] shrink-0"><svg className="size-3" fill="none" viewBox="0 0 12 12"><path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg></button>
+                    </div>
+                  )}
                   <div className="flex gap-4 justify-center items-center">
                     {/* Edit / Save Button */}
                     <button
-                      onClick={() => {
+                      disabled={editSaving}
+                      onClick={async () => {
                         if (isEditing) {
-                          setIsEditing(false);
-                          setShowSaveConfirmation(true);
+                          if (!selectedReport?.apiId) return;
+                          setEditSaving(true);
+                          setEditSaveError(null);
+                          try {
+                            const updated = await editReport(selectedReport.apiId, { executiveSummary: editedSummary }) as Record<string, unknown>;
+                            const newData = { ...(fullReportData ?? {}), executiveSummary: editedSummary, executive_summary: editedSummary };
+                            reportDataCache.current.set(selectedReport.apiId, newData);
+                            setFullReportData(newData);
+                            if (updated) {
+                              reportDataCache.current.set(selectedReport.apiId, updated);
+                              setFullReportData(updated);
+                            }
+                            setIsEditing(false);
+                            setShowSaveConfirmation(true);
+                          } catch (err) {
+                            setEditSaveError(err instanceof Error ? err.message : 'Failed to save changes.');
+                          } finally {
+                            setEditSaving(false);
+                          }
                         } else {
+                          setEditedSummary(String(fullReportData?.executiveSummary ?? fullReportData?.executive_summary ?? ""));
+                          setEditSaveError(null);
                           setIsEditing(true);
                         }
                       }}
-                      className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2"
+                      className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isEditing ? (
                         <>
@@ -878,17 +928,20 @@ export default function Reports() {
                     <button
                       onClick={async () => {
                         if (!selectedReport || selectedReport.apiId === 0) return;
+                        setFinalizeError(null);
                         try {
                           await finalizeReport(selectedReport.apiId);
-                          const today = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+                          const now = new Date();
+                          const today = now.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) +
+                            " " + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                           setReports(prev => prev.map(r =>
                             r.apiId === selectedReport.apiId
                               ? { ...r, status: 'Finalized', finalizedDate: today }
                               : r
                           ));
                           setSelectedReport(prev => prev ? { ...prev, status: 'Finalized', finalizedDate: today } : prev);
-                        } catch {
-                          // silently fail — user can retry
+                        } catch (err) {
+                          setFinalizeError(err instanceof Error ? err.message : 'Failed to finalize report. Please try again.');
                         }
                       }}
                       className="h-[53px] px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2"

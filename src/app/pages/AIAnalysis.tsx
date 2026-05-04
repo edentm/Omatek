@@ -50,6 +50,10 @@ export default function AIAnalysis() {
       getDiscrepancies().catch(() => []),
       getIngestionLog().catch(() => []),
     ]).then(([disc, log]) => {
+      if (Array.isArray(disc) && disc.length > 0) {
+        console.debug("[AIAnalysis] first discrepancy keys:", Object.keys(disc[0]));
+        console.debug("[AIAnalysis] first discrepancy sample:", disc[0]);
+      }
       setDiscrepancies(disc as Record<string, unknown>[]);
       setIngestionLog(log as Record<string, unknown>[]);
       setAnalysisLoaded(true);
@@ -210,8 +214,47 @@ export default function AIAnalysis() {
       uploadedBy: "Oladosu Teyibo",
       role: "Administrator"
     },
-   
+
   ];
+
+  // Pre-process discrepancies from API into display-ready objects
+  const processedDiscrepancies = discrepancies.map((d) => {
+    const rawDate = d.dateFlagged ?? d.date_flagged ?? d.createdAt ?? d.created_at;
+    const rawConf = d.aiConfidence ?? d.ai_confidence ?? d.confidenceScore ?? d.confidence_score;
+    const levelRaw = (d.level ?? d.severity ?? "Medium") as string;
+    const level = levelRaw.charAt(0).toUpperCase() + levelRaw.slice(1);
+    let dateFlagged = "—";
+    if (rawDate) {
+      const dt = new Date(rawDate as string);
+      dateFlagged = isNaN(dt.getTime())
+        ? String(rawDate)
+        : dt.toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+    const aiConfidence = rawConf != null
+      ? `${Math.round(Number(rawConf) * (Number(rawConf) <= 1 ? 100 : 1))}%`
+      : "—";
+    return {
+      title: (d.title ?? d.description ?? "Anomaly") as string,
+      id: d.id as string,
+      level,
+      dateFlagged,
+      type: "",
+      aiConfidence,
+    };
+  }).filter((issue) => {
+    if (issueLevelFilter.length > 0 && !issueLevelFilter.includes(issue.level)) return false;
+    if (dateFlaggedFrom || dateFlaggedTo) {
+      const dt = parseDate(issue.dateFlagged);
+      if (dt && dateFlaggedFrom && dt < new Date(dateFlaggedFrom)) return false;
+      if (dt && dateFlaggedTo && dt > new Date(dateFlaggedTo)) return false;
+    }
+    if (confidenceFilter.length > 0) {
+      const v = parseInt(issue.aiConfidence);
+      const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
+      if (!confidenceFilter.includes(band)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="bg-white h-full w-full p-8 overflow-y-auto">
@@ -425,7 +468,7 @@ export default function AIAnalysis() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {discrepancies.length === 0 ? (
+                {processedDiscrepancies.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
@@ -439,27 +482,7 @@ export default function AIAnalysis() {
                       </div>
                     </td>
                   </tr>
-                ) : (discrepancies.map((d) => ({
-                  title: (d.description ?? d.title ?? "Anomaly") as string,
-                  id: d.id as string,
-                  level: ((d.severity ?? d.level ?? "medium") as string).charAt(0).toUpperCase() + ((d.severity ?? d.level ?? "medium") as string).slice(1),
-                  dateFlagged: d.createdAt ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—",
-                  type: "",
-                  aiConfidence: d.confidenceScore != null ? `${Math.round(Number(d.confidenceScore) * (Number(d.confidenceScore) <= 1 ? 100 : 1))}%` : "—",
-                })).filter(issue => {
-                  if (issueLevelFilter.length > 0 && !issueLevelFilter.includes(issue.level)) return false;
-                  if (dateFlaggedFrom || dateFlaggedTo) {
-                    const d = parseDate(issue.dateFlagged);
-                    if (d && dateFlaggedFrom && d < new Date(dateFlaggedFrom)) return false;
-                    if (d && dateFlaggedTo && d > new Date(dateFlaggedTo)) return false;
-                  }
-                  if (confidenceFilter.length > 0) {
-                    const v = parseInt(issue.aiConfidence);
-                    const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
-                    if (!confidenceFilter.includes(band)) return false;
-                  }
-                  return true;
-                }).map((issue, index) => (
+                ) : processedDiscrepancies.map((issue, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-4 py-2.5 whitespace-nowrap">
                       <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
@@ -486,7 +509,7 @@ export default function AIAnalysis() {
                       {issue.dateFlagged}
                     </td>
                   </tr>
-                )))}
+                ))}
               </tbody>
             </table>
           </div>
@@ -979,7 +1002,6 @@ export default function AIAnalysis() {
       )}
 
 
-    </div>
 
       </>}
 

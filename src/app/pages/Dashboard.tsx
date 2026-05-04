@@ -6,6 +6,7 @@ type PlatformMetrics = {
   totalDocuments?: number
   totalReports?: number
   anomalyCount?: number
+  totalAnomaliesDetected?: number
 }
 
 type TrendPoint = { date: string; score: number; documentName: string }
@@ -594,7 +595,7 @@ export default function Dashboard() {
               {[
                 { label: "Total Documents Uploaded", value: platformMetrics.totalDocuments ?? 0 },
                 { label: "Total Reports Generated", value: platformMetrics.totalReports ?? 0 },
-                { label: "Anomalies Flagged", value: platformMetrics.anomalyCount ?? 0 },
+                { label: "Anomalies Flagged", value: platformMetrics.totalAnomaliesDetected ?? platformMetrics.anomalyCount ?? 0 },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between items-center py-4 border-b border-[#eaecf0] last:border-0">
                   <span className="text-[14px] text-[#667085]">{item.label}</span>
