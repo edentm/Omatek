@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router";
 import { getDashboardMetrics, getDashboardCharts, getDocuments, getReports, getReport, getStockData } from "../../api";
 import { useDocumentContext } from "../../contexts/DocumentContext";
 
@@ -122,7 +123,8 @@ function MiniLineChart({
 }
 
 export default function Dashboard() {
-  const { activeDocument, setActiveDocument } = useDocumentContext()
+  const navigate = useNavigate()
+  const { activeDocument, activeDocuments, toggleDocument, setActiveDocuments } = useDocumentContext()
 
   // Platform-level (always loaded, not document-specific)
   const [platformMetrics, setPlatformMetrics] = useState<PlatformMetrics>({})
@@ -320,13 +322,13 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Document selector dropdown */}
+        {/* Document selector dropdown — multi-select */}
         <div className="relative shrink-0" ref={docDropdownRef}>
           <button
             onClick={() => setDocDropdownOpen(o => !o)}
             disabled={documents.length === 0}
             className={`flex items-center gap-2 h-[40px] px-4 border rounded-[10px] text-[13px] transition-colors min-w-[240px] ${
-              activeDocument
+              activeDocuments.length > 0
                 ? "border-[#144430] bg-[#f0f9f4] text-[#144430]"
                 : "border-[#d0d5dd] bg-white text-[#667085] hover:bg-gray-50"
             } disabled:opacity-50`}
@@ -337,9 +339,11 @@ export default function Dashboard() {
             <span className="flex-1 text-left truncate">
               {documents.length === 0
                 ? "No documents uploaded"
-                : activeDocument
-                ? activeDocument.name
-                : "Select a document…"}
+                : activeDocuments.length === 0
+                ? "Select documents…"
+                : activeDocuments.length === 1
+                ? activeDocuments[0].name
+                : `${activeDocuments.length} documents selected`}
             </span>
             {docLoading ? (
               <svg className="size-4 animate-spin shrink-0" viewBox="0 0 20 20" fill="none">
@@ -354,46 +358,38 @@ export default function Dashboard() {
 
           {docDropdownOpen && (
             <div className="absolute top-[44px] right-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl min-w-[300px] overflow-hidden">
-              {activeDocument && (
-                <div className="border-b border-[#eaecf0]">
+              {activeDocuments.length > 0 && (
+                <div className="border-b border-[#eaecf0] flex items-center justify-between px-4 py-2">
+                  <span className="text-[11px] text-[#667085]">{activeDocuments.length} selected</span>
                   <button
-                    onClick={() => { setActiveDocument(null); setDocDropdownOpen(false) }}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 text-left text-[12px] text-[#b42318]"
-                  >
-                    <svg className="size-3.5" fill="none" viewBox="0 0 16 16">
-                      <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Clear selection
-                  </button>
+                    onClick={() => setActiveDocuments([])}
+                    className="text-[11px] text-[#b42318] hover:underline"
+                  >Clear all</button>
                 </div>
               )}
               <div className="max-h-[260px] overflow-y-auto py-1">
-                {documents.map(doc => (
-                  <button
-                    key={doc.id}
-                    onClick={() => {
-                      setActiveDocument({ id: doc.id, name: doc.name, uploadedAt: doc.uploadedAt })
-                      setDocDropdownOpen(false)
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${
-                      activeDocument?.id === doc.id ? "bg-[#f0f9f4]" : ""
-                    }`}
-                  >
-                    <div className={`size-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                      activeDocument?.id === doc.id ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"
-                    }`}>
-                      {activeDocument?.id === doc.id && <div className="size-1.5 rounded-full bg-white" />}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[13px] text-[#344054] truncate">{doc.name}</span>
-                      {doc.uploadedAt && (
-                        <span className="text-[10px] text-[#98a2b3]">
-                          {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                {documents.map(doc => {
+                  const checked = activeDocuments.some(d => d.id === doc.id)
+                  return (
+                    <button
+                      key={doc.id}
+                      onClick={() => toggleDocument({ id: doc.id, name: doc.name, uploadedAt: doc.uploadedAt })}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${checked ? "bg-[#f0f9f4]" : ""}`}
+                    >
+                      <div className={`size-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${checked ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"}`}>
+                        {checked && <svg className="size-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[13px] text-[#344054] truncate">{doc.name}</span>
+                        {doc.uploadedAt && (
+                          <span className="text-[10px] text-[#98a2b3]">
+                            {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -401,13 +397,13 @@ export default function Dashboard() {
       </div>
 
       {/* No-document banner */}
-      {!activeDocument && !docLoading && (
+      {activeDocuments.length === 0 && !docLoading && (
         <div className="mb-6 flex items-center gap-3 px-5 py-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[12px]">
           <svg className="size-5 text-[#667085] shrink-0" fill="none" viewBox="0 0 20 20">
             <path d="M10 18.333A8.333 8.333 0 1 0 10 1.667a8.333 8.333 0 0 0 0 16.666ZM10 6.667v3.333M10 13.333h.008" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           <p className="text-[13px] text-[#475467]">
-            <span className="font-semibold text-[#344054]">No document selected.</span> Choose a document from the dropdown above — Revenue, Expenses, Health Score, and Trends will all populate from that document's analysis.
+            <span className="font-semibold text-[#344054]">No documents selected.</span> Choose one or more documents — Revenue, Expenses, Health Score, and Trends will populate from the primary selection.
           </p>
         </div>
       )}
@@ -562,7 +558,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Platform Summary — always shown */}
+        {/* Platform Summary — always shown, rows are clickable */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-4">
           <p className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">Platform Summary</p>
           {platformLoading ? (
@@ -572,14 +568,23 @@ export default function Dashboard() {
           ) : (
             <div className="flex flex-col gap-0 mt-2">
               {[
-                { label: "Total Documents Uploaded", value: platformMetrics.totalDocuments ?? 0 },
-                { label: "Total Reports Generated", value: platformMetrics.totalReports ?? 0 },
-                { label: "Anomalies Flagged", value: platformMetrics.totalAnomaliesDetected ?? platformMetrics.anomalyCount ?? 0 },
+                { label: "Total Documents Uploaded", value: platformMetrics.totalDocuments ?? 0, route: "/documents", icon: "📄" },
+                { label: "Total Reports Generated", value: platformMetrics.totalReports ?? 0, route: "/reports", icon: "📋" },
+                { label: "Anomalies Flagged", value: platformMetrics.totalAnomaliesDetected ?? platformMetrics.anomalyCount ?? 0, route: "/ai-analysis?tab=discrepancies", icon: "⚠️" },
               ].map((item) => (
-                <div key={item.label} className="flex justify-between items-center py-4 border-b border-[#eaecf0] last:border-0">
-                  <span className="text-[14px] text-[#667085]">{item.label}</span>
-                  <span className="text-[28px] font-['Figtree:Medium',sans-serif] font-medium text-black">{item.value}</span>
-                </div>
+                <button
+                  key={item.label}
+                  onClick={() => navigate(item.route)}
+                  className="flex justify-between items-center py-4 border-b border-[#eaecf0] last:border-0 hover:bg-[#f9fafb] rounded-[6px] px-2 -mx-2 transition-colors group text-left w-full"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[14px] text-[#667085] group-hover:text-[#344054] transition-colors">{item.label}</span>
+                    <svg className="size-3.5 text-[#d0d5dd] group-hover:text-[#667085] transition-colors" fill="none" viewBox="0 0 14 14">
+                      <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-[28px] font-['Figtree:Medium',sans-serif] font-medium text-black group-hover:text-[#144430] transition-colors">{item.value}</span>
+                </button>
               ))}
             </div>
           )}

@@ -1,14 +1,20 @@
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router";
 import { getDiscrepancies, getIngestionLog, uploadDocument, pollJobStatus, getDocuments } from "../../api";
 import FilterButton from "../components/FilterButton";
 import { useDocumentContext } from "../../contexts/DocumentContext";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 
 export default function AIAnalysis() {
-  const { activeDocument, setActiveDocument } = useDocumentContext();
+  const { activeDocument, activeDocuments, toggleDocument, setActiveDocuments } = useDocumentContext();
   const { isExhausted } = useTokenLedger();
-  const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>('keyMetrics');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'discrepancies' || tab === 'ingestion') return tab;
+    return 'keyMetrics';
+  });
   const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
   const [discrepancies, setDiscrepancies] = useState<Record<string, unknown>[]>([]);
   const [ingestionLog, setIngestionLog] = useState<Record<string, unknown>[]>([]);
@@ -43,7 +49,7 @@ export default function AIAnalysis() {
 
   // Only load analysis data when user explicitly triggers it
   const loadAnalysis = () => {
-    if (!activeDocument) return;
+    if (activeDocuments.length === 0) return;
     if (isExhausted) return;
     setAnalysisLoading(true);
     Promise.all([
@@ -266,19 +272,6 @@ export default function AIAnalysis() {
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">Extract key findings from uploaded documents with AI</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
-          >
-            <svg className="size-5" fill="none" viewBox="0 0 20 20">
-              <path d="M10 4.16667V15.8333M4.16667 10H15.8333" stroke="#344054" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
-              Upload & Analyze Documents
-            </p>
-          </button>
-        </div>
       </div>
 
       {/* Document selector + Load Analysis bar */}
@@ -288,16 +281,20 @@ export default function AIAnalysis() {
         </svg>
         <p className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054] shrink-0">Select Document to Analyze</p>
 
+        {/* Multi-select document dropdown */}
         <div className="relative" ref={docDropdownRef}>
           <button
             onClick={() => setDocDropdownOpen(o => !o)}
             disabled={documents.length === 0}
             className={`flex items-center gap-2 h-[36px] px-4 border rounded-[8px] text-[13px] transition-colors min-w-[220px] ${
-              activeDocument ? "border-[#144430] bg-[#f0f9f4] text-[#144430]" : "border-[#d0d5dd] bg-white text-[#667085] hover:bg-gray-50"
+              activeDocuments.length > 0 ? "border-[#144430] bg-[#f0f9f4] text-[#144430]" : "border-[#d0d5dd] bg-white text-[#667085] hover:bg-gray-50"
             } disabled:opacity-50`}
           >
             <span className="flex-1 text-left truncate">
-              {documents.length === 0 ? "No documents uploaded" : activeDocument ? activeDocument.name : "Choose a document…"}
+              {documents.length === 0 ? "No documents uploaded"
+                : activeDocuments.length === 0 ? "Choose documents…"
+                : activeDocuments.length === 1 ? activeDocuments[0].name
+                : `${activeDocuments.length} documents selected`}
             </span>
             <svg className={`size-4 shrink-0 transition-transform ${docDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 20 20">
               <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -306,26 +303,35 @@ export default function AIAnalysis() {
 
           {docDropdownOpen && documents.length > 0 && (
             <div className="absolute top-[40px] left-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl min-w-[280px] overflow-hidden">
+              {activeDocuments.length > 0 && (
+                <div className="border-b border-[#eaecf0] flex items-center justify-between px-4 py-2">
+                  <span className="text-[11px] text-[#667085]">{activeDocuments.length} selected</span>
+                  <button onClick={() => { setActiveDocuments([]); setAnalysisLoaded(false); setDiscrepancies([]); setIngestionLog([]); }} className="text-[11px] text-[#b42318] hover:underline">Clear all</button>
+                </div>
+              )}
               <div className="max-h-[220px] overflow-y-auto py-1">
-                {documents.map(doc => (
-                  <button
-                    key={doc.id}
-                    onClick={() => { setActiveDocument({ id: doc.id, name: doc.name, uploadedAt: doc.uploadedAt }); setDocDropdownOpen(false); setAnalysisLoaded(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${activeDocument?.id === doc.id ? "bg-[#f0f9f4]" : ""}`}
-                  >
-                    <div className={`size-4 rounded-full border-2 shrink-0 flex items-center justify-center ${activeDocument?.id === doc.id ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"}`}>
-                      {activeDocument?.id === doc.id && <div className="size-1.5 rounded-full bg-white" />}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[13px] text-[#344054] truncate">{doc.name}</span>
-                      {doc.uploadedAt && (
-                        <span className="text-[10px] text-[#98a2b3]">
-                          {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                {documents.map(doc => {
+                  const checked = activeDocuments.some(d => d.id === doc.id);
+                  return (
+                    <button
+                      key={doc.id}
+                      onClick={() => { toggleDocument({ id: doc.id, name: doc.name, uploadedAt: doc.uploadedAt }); setAnalysisLoaded(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${checked ? "bg-[#f0f9f4]" : ""}`}
+                    >
+                      <div className={`size-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${checked ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"}`}>
+                        {checked && <svg className="size-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[13px] text-[#344054] truncate">{doc.name}</span>
+                        {doc.uploadedAt && (
+                          <span className="text-[10px] text-[#98a2b3]">
+                            {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -333,7 +339,7 @@ export default function AIAnalysis() {
 
         <button
           onClick={loadAnalysis}
-          disabled={!activeDocument || analysisLoading || isExhausted}
+          disabled={activeDocuments.length === 0 || analysisLoading || isExhausted}
           title={isExhausted ? 'API balance exhausted — recharge to use AI features' : undefined}
           className="flex items-center gap-2 h-[36px] px-5 bg-[#144430] text-white rounded-[8px] text-[13px] font-medium hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -346,9 +352,11 @@ export default function AIAnalysis() {
           )}
         </button>
 
-        {activeDocument && analysisLoaded && (
+        {activeDocuments.length > 0 && analysisLoaded && (
           <>
-            <span className="text-[12px] text-[#027a48] font-medium">Analysis loaded for: {activeDocument.name}</span>
+            <span className="text-[12px] text-[#027a48] font-medium">
+              {activeDocuments.length === 1 ? `Analysis loaded for: ${activeDocuments[0].name}` : `Analysis loaded for ${activeDocuments.length} documents`}
+            </span>
             <button
               onClick={() => { setAnalysisLoaded(false); setDiscrepancies([]); setIngestionLog([]); }}
               title="Close analysis"
@@ -359,8 +367,8 @@ export default function AIAnalysis() {
             </button>
           </>
         )}
-        {!activeDocument && (
-          <span className="text-[12px] text-[#98a2b3]">No document selected — select one to begin</span>
+        {activeDocuments.length === 0 && (
+          <span className="text-[12px] text-[#98a2b3]">No documents selected — select one or more to begin</span>
         )}
       </div>
 
