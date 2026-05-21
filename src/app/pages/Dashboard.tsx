@@ -187,7 +187,14 @@ export default function Dashboard() {
 
     getDocuments()
       .then((data: unknown) => {
-        const docs = (data as Record<string, unknown>[]).map(d => ({
+        // Backend may return a flat array or a paginated object { documents/items/data: [...] }
+        const raw = Array.isArray(data)
+          ? data
+          : ((data as Record<string, unknown>).documents
+              ?? (data as Record<string, unknown>).items
+              ?? (data as Record<string, unknown>).data
+              ?? []) as Record<string, unknown>[]
+        const docs = raw.map(d => ({
           id: d.id as number,
           name: (d.originalFilename ?? d.filename ?? `Document #${d.id}`) as string,
           uploadedAt: (d.uploadedAt ?? d.createdAt ?? "") as string,
