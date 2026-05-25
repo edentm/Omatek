@@ -225,15 +225,6 @@ export default function DashboardLayout() {
                 </div>
               </button>
 
-              {/* Audit Log — admin only */}
-              {isAdmin && (
-                <button onClick={() => navigate("/audit-log")} className={navBtn("/audit-log").btn}>
-                  <div className="flex items-center gap-[12px] pl-[16px]">
-                    <ClipboardList className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/audit-log").icon} />
-                    <p className={navBtn("/audit-log").text}>Audit Log</p>
-                  </div>
-                </button>
-              )}
 
               {/* Users — admin only */}
               {isAdmin && (
