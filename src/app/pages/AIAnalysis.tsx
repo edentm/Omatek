@@ -1,1028 +1,362 @@
-
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router";
-import { getDiscrepancies, getIngestionLog, uploadDocument, pollJobStatus, getDocuments } from "../../api";
-import FilterButton from "../components/FilterButton";
-import { useDocumentContext } from "../../contexts/DocumentContext";
-import { useTokenLedger } from "../../contexts/TokenLedgerContext";
+
+const TIME_PERIODS = [
+  { label: "All Time", value: "all" },
+  { label: "Current Period", value: "current" },
+  { label: "May 2026", value: "2026-05" },
+  { label: "Apr 2026", value: "2026-04" },
+  { label: "Mar 2026", value: "2026-03" },
+  { label: "2025", value: "2025" },
+  { label: "2024", value: "2024" },
+  { label: "2023", value: "2023" },
+]
+
+const TABS = [
+  { key: "profit", label: "Profit" },
+  { key: "market", label: "Market" },
+  { key: "operations", label: "Operations" },
+  { key: "financialHealth", label: "Financial Health" },
+] as const
+
+type Tab = typeof TABS[number]["key"]
 
 export default function AIAnalysis() {
-  const { activeDocument, activeDocuments, toggleDocument, setActiveDocuments } = useDocumentContext();
-  const { isExhausted } = useTokenLedger();
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<'keyMetrics' | 'discrepancies' | 'ingestion'>(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'discrepancies' || tab === 'ingestion') return tab;
-    return 'keyMetrics';
-  });
-  const [activeMetricsTab, setActiveMetricsTab] = useState<'profit' | 'market' | 'operations' | 'debt'>('profit');
-  const [discrepancies, setDiscrepancies] = useState<Record<string, unknown>[]>([]);
-  const [ingestionLog, setIngestionLog] = useState<Record<string, unknown>[]>([]);
-  const [analysisLoaded, setAnalysisLoaded] = useState(false);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-
-  // Document selector for analysis
-  const [documents, setDocuments] = useState<{ id: number; name: string; uploadedAt: string }[]>([]);
-  const [docDropdownOpen, setDocDropdownOpen] = useState(false);
-  const docDropdownRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("profit")
+  const [timePeriod, setTimePeriod] = useState("all")
+  const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false)
+  const periodDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    getDocuments()
-      .then((data: unknown) => {
-        const docs = (data as Record<string, unknown>[]).map(d => ({
-          id: d.id as number,
-          name: (d.originalFilename ?? d.filename ?? `Document #${d.id}`) as string,
-          uploadedAt: (d.uploadedAt ?? d.createdAt ?? "") as string,
-        }));
-        setDocuments(docs);
-      })
-      .catch(() => {});
-
     const handler = (e: MouseEvent) => {
-      if (docDropdownRef.current && !docDropdownRef.current.contains(e.target as Node)) {
-        setDocDropdownOpen(false);
+      if (periodDropdownRef.current && !periodDropdownRef.current.contains(e.target as Node)) {
+        setPeriodDropdownOpen(false)
       }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  // Only load analysis data when user explicitly triggers it
-  const loadAnalysis = () => {
-    if (activeDocuments.length === 0) return;
-    if (isExhausted) return;
-    setAnalysisLoading(true);
-    Promise.all([
-      getDiscrepancies().catch(() => []),
-      getIngestionLog().catch(() => []),
-    ]).then(([disc, log]) => {
-      if (Array.isArray(disc) && disc.length > 0) {
-        console.debug("[AIAnalysis] first discrepancy keys:", Object.keys(disc[0]));
-        console.debug("[AIAnalysis] first discrepancy sample:", disc[0]);
-      }
-      setDiscrepancies(disc as Record<string, unknown>[]);
-      setIngestionLog(log as Record<string, unknown>[]);
-      setAnalysisLoaded(true);
-    }).finally(() => setAnalysisLoading(false));
-  };
-
-
-  // Modal + confirmation state
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [modalStep, setModalStep] = useState<'idle' | 'analyzing' | 'complete'>('idle');
-  const [uploadError, setUploadError] = useState('');
-
-  const closeModal = () => {
-    setShowUploadModal(false);
-    setUploadedFiles([]);
-    setModalStep('idle');
-    setUploadError('');
-  };
-
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const incoming = Array.from(e.dataTransfer.files);
-    setUploadedFiles(prev => [...prev, ...incoming].slice(0, 20));
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const incoming = Array.from(e.target.files);
-    setUploadedFiles(prev => [...prev, ...incoming].slice(0, 20));
-  };
-
-  const handleUpload = async () => {
-    setModalStep('analyzing');
-    setUploadError('');
-    try {
-      for (const file of uploadedFiles) {
-        const { jobId } = await uploadDocument(file);
-        await new Promise<void>((resolve, reject) => {
-          const interval = setInterval(async () => {
-            try {
-              const status = await pollJobStatus(jobId);
-              if (status.status === 'complete') { clearInterval(interval); resolve(); }
-              else if (status.status === 'failed') { clearInterval(interval); reject(new Error(status.error ?? 'Analysis failed')); }
-            } catch (e) { clearInterval(interval); reject(e); }
-          }, 2000);
-        });
-      }
-      // Refresh discrepancies after upload
-      getDiscrepancies().then(setDiscrepancies).catch(() => {});
-      getIngestionLog().then(setIngestionLog).catch(() => {});
-      setModalStep('complete');
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed');
-      setModalStep('idle');
     }
-  };
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
 
-  const handleSave = () => {
-    closeModal();
-  };
-
-  useEffect(() => {
-    if (!showUploadModal) setModalStep('idle');
-  }, [showUploadModal]);
-
-  // Filter state
-  const [openFilter, setOpenFilter] = useState<string | null>(null);
-  const [issueLevelFilter, setIssueLevelFilter] = useState<string[]>([]);
-  const [dateFlaggedFrom, setDateFlaggedFrom] = useState("");
-  const [dateFlaggedTo, setDateFlaggedTo] = useState("");
-  const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
-
-  const toggleFilter = (name: string) => setOpenFilter(prev => prev === name ? null : name);
-
-  const parseDate = (dateStr: string) => {
-    if (!dateStr) return null;
-    const parts = dateStr.split("/");
-    if (parts.length !== 3) return null;
-    return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
-  };
-
-  const mockIssues = [
-    { 
-      title: "Q1 2026 Financial Summary", 
-      id: "FR-0001-2026", 
-      level: "High", 
-      dateFlagged: "03/31/2026", 
-      type: "Quarterly Report", 
-      aiConfidence: "95%" 
-    },
-    { 
-      title: "Annual Budget Forecast", 
-      id: "FR-0002-2026", 
-      level: "Warning", 
-      dateFlagged: "03/28/2026", 
-      type: "Budget Analysis", 
-      aiConfidence: "87%" 
-    },
-    { 
-      title: "Expense Reconciliation Report", 
-      id: "FR-0003-2026", 
-      level: "Warning", 
-      dateFlagged: "03/25/2026", 
-      type: "Expense Report", 
-      aiConfidence: "92%" 
-    },
-    { 
-      title: "Revenue Analysis - March", 
-      id: "FR-0004-2026", 
-      level: "High", 
-      dateFlagged: "03/30/2026", 
-      type: "Revenue Report", 
-      aiConfidence: "98%" 
-    },
-  ];
+  const selectedPeriod = TIME_PERIODS.find(p => p.value === timePeriod) ?? TIME_PERIODS[0]
 
   const getConfidencePill = (confidence: string) => {
-    const value = parseInt(confidence);
-    if (value >= 90) return { label: `${confidence} - Very High`, classes: "bg-[#ecfdf3] text-[#027a48]" };
-    if (value >= 80) return { label: `${confidence} - High`, classes: "bg-[#e8f0fe] text-[#1a56db]" };
-    if (value >= 60) return { label: `${confidence} - Moderate`, classes: "bg-[#fef0c7] text-[#dc6803]" };
-    return { label: `${confidence} - Low`, classes: "bg-[#fef3f2] text-[#b42318]" };
-  };
-
-  const mockIngestionData = [
-    {
-      name: "Financial Report 2026",
-      id: "DOC-0001",
-      numberOfDocs: "12",
-      uploadDate: "03/31/2026",
-      uploadedBy: "Oladosu Teyibo",
-      role: "Administrator"
-    },
-    {
-      name: "Annual Budget Proposal",
-      id: "DOC-0002",
-      numberOfDocs: "8",
-      uploadDate: "03/28/2026",
-      uploadedBy: "Oladosu Teyibo",
-      role: "Administrator"
-    },
-    {
-      name: "Expense Report - March & April",
-      id: "DOC-0003",
-      numberOfDocs: "15",
-      uploadDate: "03/25/2026",
-      uploadedBy: "Oladosu Teyibo",
-      role: "Administrator"
-    },
-    {
-      name: "Initial Upload - All Existing Docs",
-      id: "DOC-0004",
-      numberOfDocs: "24",
-      uploadDate: "03/30/2026",
-      uploadedBy: "Oladosu Teyibo",
-      role: "Administrator"
-    },
-
-  ];
-
-  // Pre-process discrepancies from API into display-ready objects
-  const processedDiscrepancies = discrepancies.map((d) => {
-    const rawDate = d.dateFlagged ?? d.date_flagged ?? d.createdAt ?? d.created_at;
-    const rawConf = d.aiConfidence ?? d.ai_confidence ?? d.confidenceScore ?? d.confidence_score;
-    const levelRaw = (d.level ?? d.severity ?? "Medium") as string;
-    const level = levelRaw.charAt(0).toUpperCase() + levelRaw.slice(1);
-    let dateFlagged = "—";
-    if (rawDate) {
-      const dt = new Date(rawDate as string);
-      dateFlagged = isNaN(dt.getTime())
-        ? String(rawDate)
-        : dt.toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    }
-    const aiConfidence = rawConf != null
-      ? `${Math.round(Number(rawConf) * (Number(rawConf) <= 1 ? 100 : 1))}%`
-      : "—";
-    return {
-      title: (d.title ?? d.description ?? "Anomaly") as string,
-      id: d.id as string,
-      level,
-      dateFlagged,
-      type: "",
-      aiConfidence,
-    };
-  }).filter((issue) => {
-    if (issueLevelFilter.length > 0 && !issueLevelFilter.includes(issue.level)) return false;
-    if (dateFlaggedFrom || dateFlaggedTo) {
-      const dt = parseDate(issue.dateFlagged);
-      if (dt && dateFlaggedFrom && dt < new Date(dateFlaggedFrom)) return false;
-      if (dt && dateFlaggedTo && dt > new Date(dateFlaggedTo)) return false;
-    }
-    if (confidenceFilter.length > 0) {
-      const v = parseInt(issue.aiConfidence);
-      const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
-      if (!confidenceFilter.includes(band)) return false;
-    }
-    return true;
-  });
+    const value = parseInt(confidence)
+    if (value >= 90) return { label: `${confidence} - Very High`, classes: "bg-[#ecfdf3] text-[#027a48]" }
+    if (value >= 80) return { label: `${confidence} - High`, classes: "bg-[#e8f0fe] text-[#1a56db]" }
+    if (value >= 60) return { label: `${confidence} - Moderate`, classes: "bg-[#fef0c7] text-[#dc6803]" }
+    return { label: `${confidence} - Low`, classes: "bg-[#fef3f2] text-[#b42318]" }
+  }
 
   return (
     <div className="bg-white h-full w-full p-8 overflow-y-auto">
-      <div className="flex justify-between items-start mb-6">
-        <div className="flex flex-col gap-[8px]">
+
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6 gap-4">
+        <div className="flex flex-col gap-[4px]">
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
-            AI Analysis
+            Metrics Summary
           </h1>
-          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">Extract key findings from uploaded documents with AI</p>
+          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-[#475467]">
+            Upload and analyze documents, flag issues
+          </p>
         </div>
 
-      </div>
-
-      {/* Document selector + Load Analysis bar */}
-      <div className="flex items-center gap-3 mb-6 p-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[12px]">
-        <svg className="size-5 text-[#667085] shrink-0" fill="none" viewBox="0 0 20 20">
-          <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        <p className="text-[13px] font-['Figtree:Medium',sans-serif] font-medium text-[#344054] shrink-0">Select Document to Analyze</p>
-
-        {/* Multi-select document dropdown */}
-        <div className="relative" ref={docDropdownRef}>
+        {/* Time period selector */}
+        <div className="relative shrink-0" ref={periodDropdownRef}>
           <button
-            onClick={() => setDocDropdownOpen(o => !o)}
-            disabled={documents.length === 0}
-            className={`flex items-center gap-2 h-[36px] px-4 border rounded-[8px] text-[13px] transition-colors min-w-[220px] ${
-              activeDocuments.length > 0 ? "border-[#144430] bg-[#f0f9f4] text-[#144430]" : "border-[#d0d5dd] bg-white text-[#667085] hover:bg-gray-50"
-            } disabled:opacity-50`}
+            onClick={() => setPeriodDropdownOpen(o => !o)}
+            className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors min-w-[160px]"
           >
-            <span className="flex-1 text-left truncate">
-              {documents.length === 0 ? "No documents uploaded"
-                : activeDocuments.length === 0 ? "Choose documents…"
-                : activeDocuments.length === 1 ? activeDocuments[0].name
-                : `${activeDocuments.length} documents selected`}
+            <span className="flex-1 text-left font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
+              {selectedPeriod.label.toUpperCase()}
             </span>
-            <svg className={`size-4 shrink-0 transition-transform ${docDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 20 20">
+            <svg className={`size-[18px] shrink-0 transition-transform text-[#667085] ${periodDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 20 20">
               <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
 
-          {docDropdownOpen && documents.length > 0 && (
-            <div className="absolute top-[40px] left-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl min-w-[280px] overflow-hidden">
-              {activeDocuments.length > 0 && (
-                <div className="border-b border-[#eaecf0] flex items-center justify-between px-4 py-2">
-                  <span className="text-[11px] text-[#667085]">{activeDocuments.length} selected</span>
-                  <button onClick={() => { setActiveDocuments([]); setAnalysisLoaded(false); setDiscrepancies([]); setIngestionLog([]); }} className="text-[11px] text-[#b42318] hover:underline">Clear all</button>
-                </div>
-              )}
-              <div className="max-h-[220px] overflow-y-auto py-1">
-                {documents.map(doc => {
-                  const checked = activeDocuments.some(d => d.id === doc.id);
-                  return (
+          {periodDropdownOpen && (
+            <div className="absolute top-[48px] right-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl min-w-[180px] overflow-hidden py-1">
+              {TIME_PERIODS.map((p, i) => {
+                const isYearDivider = i > 0 && p.value.length === 4 && TIME_PERIODS[i - 1].value.length !== 4
+                return (
+                  <div key={p.value}>
+                    {isYearDivider && <div className="border-t border-[#eaecf0] my-1" />}
                     <button
-                      key={doc.id}
-                      onClick={() => { toggleDocument({ id: doc.id, name: doc.name, uploadedAt: doc.uploadedAt }); setAnalysisLoaded(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${checked ? "bg-[#f0f9f4]" : ""}`}
+                      onClick={() => { setTimePeriod(p.value); setPeriodDropdownOpen(false) }}
+                      className={`w-full text-left px-4 py-2 text-[13px] hover:bg-gray-50 transition-colors ${
+                        timePeriod === p.value ? "text-[#144430] font-medium bg-[#f0f9f4]" : "text-[#344054]"
+                      }`}
                     >
-                      <div className={`size-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${checked ? "border-[#144430] bg-[#144430]" : "border-[#d0d5dd]"}`}>
-                        {checked && <svg className="size-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[13px] text-[#344054] truncate">{doc.name}</span>
-                        {doc.uploadedAt && (
-                          <span className="text-[10px] text-[#98a2b3]">
-                            {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                          </span>
-                        )}
-                      </div>
+                      {p.label}
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
-
-        <button
-          onClick={loadAnalysis}
-          disabled={activeDocuments.length === 0 || analysisLoading || isExhausted}
-          title={isExhausted ? 'API balance exhausted — recharge to use AI features' : undefined}
-          className="flex items-center gap-2 h-[36px] px-5 bg-[#144430] text-white rounded-[8px] text-[13px] font-medium hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {analysisLoading ? (
-            <><svg className="size-4 animate-spin" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" strokeDasharray="25 50"/></svg>Loading…</>
-          ) : isExhausted ? (
-            <>Recharge Required</>
-          ) : (
-            <><svg className="size-4" fill="none" viewBox="0 0 20 20"><path d="M10 3v3M10 14v3M3 10h3M14 10h3M5.05 5.05l2.12 2.12M12.83 12.83l2.12 2.12M5.05 14.95l2.12-2.12M12.83 7.17l2.12-2.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Load Analysis</>
-          )}
-        </button>
-
-        {activeDocuments.length > 0 && analysisLoaded && (
-          <>
-            <span className="text-[12px] text-[#027a48] font-medium">
-              {activeDocuments.length === 1 ? `Analysis loaded for: ${activeDocuments[0].name}` : `Analysis loaded for ${activeDocuments.length} documents`}
-            </span>
-            <button
-              onClick={() => { setAnalysisLoaded(false); setDiscrepancies([]); setIngestionLog([]); }}
-              title="Close analysis"
-              className="ml-auto flex items-center gap-1 px-3 h-[32px] border border-[#d0d5dd] rounded-[8px] text-[12px] text-[#667085] hover:bg-[#f9fafb] transition-colors"
-            >
-              <svg className="size-3.5" fill="none" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              Close
-            </button>
-          </>
-        )}
-        {activeDocuments.length === 0 && (
-          <span className="text-[12px] text-[#98a2b3]">No documents selected — select one or more to begin</span>
-        )}
       </div>
 
-      {/* Latent state — show placeholder when no analysis loaded yet */}
-      {!analysisLoaded && !analysisLoading && (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 border border-dashed border-[#eaecf0] rounded-[12px] mb-6">
-          <svg className="size-12 text-[#d0d5dd]" fill="none" viewBox="0 0 48 48">
-            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2"/>
-            <path d="M16 24h16M24 16v16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          <p className="text-[15px] font-medium text-[#667085]">Analysis Workspace</p>
-          <p className="text-[13px] text-[#98a2b3] text-center max-w-[320px]">
-            Select a document above and click <strong>Load Analysis</strong> to populate discrepancies, metrics, and ingestion data.
-          </p>
-        </div>
-      )}
-
-      {/* Tabs — only visible when analysis is loaded */}
-      {(analysisLoaded || analysisLoading) && <></> /* tabs shown below */ }
-      {analysisLoaded && <>
-
-      {/* Tabs */}
+      {/* Main tab navigation */}
       <div className="border-b border-[#e8eef7] mb-6">
         <div className="flex gap-4">
-          <button 
-            onClick={() => setActiveTab('keyMetrics')}
-            className={`font-['Public_Sans:Medium',sans-serif] font-medium text-[14px] text-black pb-3 px-2 ${
-              activeTab === 'keyMetrics' ? 'border-b-[2.4px] border-black' : ''
-            }`}
-          >
-            Key Metrics
-          </button>
-          <button 
-            onClick={() => setActiveTab('discrepancies')}
-            className={`font-['Public_Sans:Medium',sans-serif] font-medium text-[14px] text-black pb-3 px-2 ${
-              activeTab === 'discrepancies' ? 'border-b-[2.4px] border-black' : ''
-            }`}
-          >
-            Discrepancies/ Issues
-          </button>
-          <button 
-            onClick={() => setActiveTab('ingestion')}
-            className={`font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black pb-3 px-2 ${
-              activeTab === 'ingestion' ? 'border-b-[2.4px] border-black' : ''
-            }`}
-          >
-            Ingestion Log
-          </button>
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black pb-3 px-2 transition-colors ${
+                activeTab === tab.key ? "border-b-[2.4px] border-black" : "text-[#667085]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Content based on active tab */}
-      {activeTab === 'discrepancies' ? (
-        <div>
-          {/* Filters */}
-          <div className="flex gap-2 mb-6">
-            <FilterButton
-              label="Issue Level"
-              type="checkbox"
-              options={[
-                { value: "High", label: "High" },
-                { value: "Warning", label: "Warning" },
-              ]}
-              selected={issueLevelFilter}
-              onChange={setIssueLevelFilter}
-              isOpen={openFilter === "issueLevel"}
-              onToggle={() => toggleFilter("issueLevel")}
-              onClose={() => setOpenFilter(null)}
-            />
-            <FilterButton
-              label="Date"
-              type="daterange"
-              from={dateFlaggedFrom}
-              to={dateFlaggedTo}
-              onFromChange={setDateFlaggedFrom}
-              onToChange={setDateFlaggedTo}
-              isOpen={openFilter === "date"}
-              onToggle={() => toggleFilter("date")}
-              onClose={() => setOpenFilter(null)}
-            />
-            <FilterButton
-              label="AI Confidence"
-              type="checkbox"
-              options={[
-                { value: "veryHigh", label: "Very High (90% - 100%)" },
-                { value: "high", label: "High (80% - 89%)" },
-                { value: "moderate", label: "Moderate (60% - 79%)" },
-                { value: "low", label: "Low (Below 60%)" },
-              ]}
-              selected={confidenceFilter}
-              onChange={setConfidenceFilter}
-              isOpen={openFilter === "confidence"}
-              onToggle={() => toggleFilter("confidence")}
-              onClose={() => setOpenFilter(null)}
-            />
-          </div>
+      {/* Tab content */}
+      <div className="w-full">
 
-          {/* Table */}
-          <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Issue
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Issue Level
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    AI Confidence
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date Flagged
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {processedDiscrepancies.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="size-12 bg-[#ecfdf3] rounded-full flex items-center justify-center">
-                          <svg className="size-6 text-[#027a48]" fill="none" viewBox="0 0 24 24">
-                            <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                        <p className="font-['Figtree:Medium',sans-serif] font-medium text-[15px] text-black">No discrepancies flagged</p>
-                        <p className="text-[13px] text-[#667085]">Your documents appear consistent.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : processedDiscrepancies.map((issue, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                        {issue.title}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
-                        issue.level === "High"
-                          ? "bg-[#fef3f2] text-[#b42318]"
-                          : "bg-[#fef0c7] text-[#dc6803]"
-                      }`}>
-                        {issue.level}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      {(() => { const p = getConfidencePill(issue.aiConfidence); return (
-                        <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${p.classes}`}>
-                          {p.label}
-                        </span>
-                      ); })()}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-[14px] text-gray-600">
-                      {issue.dateFlagged}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : activeTab === 'ingestion' ? (
-        <div>
-          {/* Ingestion Log Table */}
-          <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ingestion Name
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Number of Docs
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Upload Date
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Uploaded By
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {ingestionLog.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="size-12 bg-[#f9fafb] border border-[#eaecf0] rounded-full flex items-center justify-center">
-                          <svg className="size-6 text-[#98a2b3]" fill="none" viewBox="0 0 24 24">
-                            <path d="M9 12h6M9 16h6M7 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 4a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                        <p className="font-['Figtree:Medium',sans-serif] font-medium text-[15px] text-black">No ingestion records found</p>
-                        <p className="text-[13px] text-[#667085]">Upload and analyze documents to see ingestion history here.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (ingestionLog.map((d) => ({
-                  name: (d.fileName ?? d.name ?? "Document") as string,
-                  numberOfDocs: String(d.numberOfDocs ?? 1),
-                  uploadDate: (d.uploadDate ?? "—") as string,
-                  uploadedBy: (d.uploadedBy ?? "Admin") as string,
-                  role: "Administrator",
-                })).map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                        {item.name}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-[14px] text-gray-600">
-                      {String(item.numberOfDocs ?? 1)}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-[14px] text-gray-600">
-                      {(item.uploadDate ?? "—") as string}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <div className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                        {(item.uploadedBy ?? "—") as string}
-                      </div>
-                      <div className="text-[12px] text-gray-500">{item.role}</div>
-                    </td>
-                  </tr>
-                )))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="w-full">
-          {/* Sub-navigation */}
-          <div className="border-b border-[#e8eef7] mb-6">
-            <div className="flex gap-4">
-              {(['profit', 'market', 'operations', 'debt'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveMetricsTab(tab)}
-                  className={`font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black pb-3 px-2 capitalize ${
-                    activeMetricsTab === tab ? 'border-b-[2.4px] border-black' : ''
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Key Metrics empty state — shown when analysis loaded but no metrics extracted */}
-          {discrepancies.length === 0 && ingestionLog.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 border border-dashed border-[#eaecf0] rounded-[12px] mb-6">
-              <div className="size-12 bg-[#f9fafb] border border-[#eaecf0] rounded-full flex items-center justify-center">
-                <svg className="size-6 text-[#98a2b3]" fill="none" viewBox="0 0 24 24">
-                  <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[15px] text-black">No key metrics extracted</p>
-              <p className="text-[13px] text-[#667085] text-center max-w-[320px]">Upload financial documents and run analysis to see extracted metrics here.</p>
-            </div>
-          )}
-
-          {/* Tab content */}
-          <div className="w-full">
-
-            {activeMetricsTab === 'profit' && (
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-2 gap-5 max-w-2xl">
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Revenue</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦2.2M</p>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1">
-                        <svg className="size-3.5 shrink-0 text-[#b42318]" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 3V11M7 11L3 7M7 11L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#b42318]">−64.9% vs FY 2024</span>
-                      </div>
-                      <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">FY 2025 · Unaudited financials</a>
-                    </div>
-                  </div>
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Administrative Expenses</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦50.52M</p>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1">
-                        <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#027a48]">−26.2% vs FY 2024</span>
-                      </div>
-                      <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">FY 2025 · Unaudited financials</a>
-                    </div>
-                  </div>
-                </div>
-                <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {["Metric","Extracted From","AI Confidence","Extraction Date"].map(h => (
-                          <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {[
-                        { metric: "Revenue (₦2.2M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "94%", date: "01/2026" },
-                        { metric: "Admin Expenses (₦50.52M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "96%", date: "01/2026" },
-                        { metric: "Net Loss (₦48.32M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "95%", date: "01/2026" },
-                        { metric: "Prior Year Revenue (₦6.27M)", source: "Omatek FY 2024 Financial Statements", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "92%", date: "2024" },
-                        { metric: "Admin Expenses FY 2024 (₦68.41M)", source: "Omatek FY 2024 Financial Statements", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "93%", date: "2024" },
-                      ].map((row, i) => {
-                        const p = getConfidencePill(row.confidence);
-                        return (
-                          <tr key={i} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
-                            <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
-                            <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
-                            <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {activeMetricsTab === 'market' && (
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-2 gap-5 max-w-2xl">
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Market Cap</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦6.94B</p>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#667085]">Rank #125 on NGX</span>
-                      <a href="https://stockanalysis.com/quote/ngx/OMATEK/statistics/" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">Stock Analysis · Apr 8, 2026</a>
-                    </div>
-                  </div>
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Share Price</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦2.47</p>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1">
-                        <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#027a48]">+8.91%</span>
-                      </div>
-                      <a href="https://afx.kwayisi.org/ngx/omatek.html" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">AFX NGX Quote · Apr 8, 2026</a>
-                    </div>
-                  </div>
-                </div>
-                <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {["Metric","Extracted From","AI Confidence","Extraction Date"].map(h => (
-                          <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {[
-                        { metric: "Market Cap (₦6.94B)", source: "Stock Analysis / NGX", sourceUrl: "https://stockanalysis.com/quote/ngx/OMATEK/statistics/", confidence: "98%", date: "04/08/2026" },
-                        { metric: "Share Price (₦2.47)", source: "AFX NGX Quote", sourceUrl: "https://afx.kwayisi.org/ngx/omatek.html", confidence: "99%", date: "04/08/2026" },
-                        { metric: "24h Price Change (+8.91%)", source: "AFX NGX Quote", sourceUrl: "https://afx.kwayisi.org/ngx/omatek.html", confidence: "99%", date: "04/08/2026" },
-                        { metric: "NGX Rank (#125)", source: "Stock Analysis / NGX", sourceUrl: "https://stockanalysis.com/quote/ngx/OMATEK/statistics/", confidence: "97%", date: "04/08/2026" },
-                      ].map((row, i) => {
-                        const p = getConfidencePill(row.confidence);
-                        return (
-                          <tr key={i} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
-                            <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
-                            <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
-                            <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {activeMetricsTab === 'operations' && (
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-2 gap-5 max-w-2xl">
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Number of Employees</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">~80</p>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#667085]">Full-time staff</span>
-                      <a href="https://www.african-markets.com/index.php/en/stock-markets/ngse/listed-companies/company?code=OMATEK" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">African Markets · FY 2024</a>
-                    </div>
-                  </div>
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Salaries & Staff Costs</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦24.3M</p>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1">
-                        <svg className="size-3.5 shrink-0 text-[#b42318]" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 3V11M7 11L3 7M7 11L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#b42318]">+4.2% vs prior year</span>
-                      </div>
-                      <p className="text-[11px] text-[#98a2b3]">FY 2025 · Sample data</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {["Metric","Extracted From","AI Confidence","Extraction Date"].map(h => (
-                          <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {[
-                        { metric: "Headcount (~80 employees)", source: "African Markets Profile", sourceUrl: "https://www.african-markets.com/index.php/en/stock-markets/ngse/listed-companies/company?code=OMATEK", confidence: "82%", date: "2024" },
-                        { metric: "Admin Expenses FY 2025 (₦50.52M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "91%", date: "01/2026" },
-                        { metric: "Admin Expenses FY 2024 (₦68.41M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "90%", date: "01/2026" },
-                        { metric: "Admin Expenses FY 2023 (₦64.01M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "88%", date: "01/2026" },
-                      ].map((row, i) => {
-                        const p = getConfidencePill(row.confidence);
-                        return (
-                          <tr key={i} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
-                            <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
-                            <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
-                            <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {activeMetricsTab === 'debt' && (
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-2 gap-5 max-w-2xl">
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Total Debt</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦1.009B</p>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#667085]">Short-term borrowings</span>
-                      <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">FY 2025 · Unaudited financials</a>
-                    </div>
-                  </div>
-                  <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
-                    <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Long-term Debt Paid Off</p>
-                    <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦0</p>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1">
-                        <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#027a48]">Fully settled</span>
-                      </div>
-                      <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">BOI & First Bank loans · FY 2025</a>
-                    </div>
-                  </div>
-                </div>
-                <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {["Metric","Extracted From","AI Confidence","Extraction Date"].map(h => (
-                          <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {[
-                        { metric: "Short-term Borrowings (₦1.009B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "95%", date: "01/2026" },
-                        { metric: "Long-term Loans (₦0, fully settled)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "97%", date: "01/2026" },
-                        { metric: "Trade & Other Payables (₦3.47B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "93%", date: "01/2026" },
-                        { metric: "Accrued Expenses (₦2.76B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "92%", date: "01/2026" },
-                        { metric: "Total Liabilities (₦5.1B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "94%", date: "01/2026" },
-                      ].map((row, i) => {
-                        const p = getConfidencePill(row.confidence);
-                        return (
-                          <tr key={i} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
-                            <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
-                            <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
-                            <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setShowUploadModal(false)}
-          />
-
-          {/* Modal card */}
-          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[680px] mx-4 p-8 flex flex-col gap-6">
-            {/* Header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[22px] text-black leading-tight">
-                  Upload & Analyze Documents
-                </h2>
-                <p className="text-[14px] text-[#667085] mt-1">
-                  AI will extract key metrics and flag discrepancies from your documents.
-                </p>
-              </div>
-              <button
-                onClick={closeModal}
-                className="text-[#667085] hover:text-black ml-4 shrink-0"
-              >
-                <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                  <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </div>
-
-            {/* ── IDLE: drop zone + file list + upload button ── */}
-            {modalStep === 'idle' && (
-              <>
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleFileDrop}
-                  className={`border-2 border-dashed rounded-[12px] px-6 py-10 flex flex-col items-center gap-3 transition-colors ${
-                    isDragging ? "border-black bg-gray-50" : "border-[#d0d5dd] bg-[#f9fafb]"
-                  }`}
-                >
-                  <div className="size-12 bg-white border border-[#d0d5dd] rounded-full flex items-center justify-center shadow-sm">
-                    <svg className="size-5 text-[#667085]" fill="none" viewBox="0 0 20 20">
-                      <path d="M10 13.333V3.333M10 3.333L6.667 6.667M10 3.333L13.333 6.667" stroke="currentColor" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M3.333 13.333v1.334A2.333 2.333 0 0 0 5.667 17h8.666a2.333 2.333 0 0 0 2.334-2.333v-1.334" stroke="currentColor" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
+        {/* Profit */}
+        {activeTab === "profit" && (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-2 gap-5 max-w-2xl">
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Revenue</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦2.2M</p>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <svg className="size-3.5 shrink-0 text-[#b42318]" viewBox="0 0 14 14" fill="none">
+                      <path d="M7 3V11M7 11L3 7M7 11L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
+                    <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#b42318]">−64.9% vs FY 2024</span>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[14px] text-black font-['Figtree:Medium',sans-serif]">Drag and drop files here</p>
-                    <p className="text-[13px] text-[#667085] mt-0.5">or</p>
-                  </div>
-                  <label className="cursor-pointer h-[36px] px-5 border border-[#d0d5dd] rounded-lg text-[14px] text-[#344054] bg-white hover:bg-gray-50 transition-colors flex items-center">
-                    Browse files
-                    <input type="file" multiple accept=".pdf,.xlsx,.xls,.doc,.docx,.csv" className="hidden" onChange={handleFileInput} />
-                  </label>
-                  <p className="text-[12px] text-[#98a2b3]">PDF, Excel, Word, CSV · Max 20 documents</p>
+                  <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">FY 2025 · Unaudited financials</a>
                 </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto">
-                    <p className="text-[12px] text-[#667085]">{uploadedFiles.length} / 20 files selected</p>
-                    {uploadedFiles.map((file, i) => (
-                      <div key={i} className="flex items-center justify-between px-3 py-2 bg-[#f9fafb] border border-[#eaecf0] rounded-lg">
-                        <span className="text-[13px] text-black truncate">{file.name}</span>
-                        <button onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-[#98a2b3] hover:text-[#b42318] ml-3 shrink-0">
-                          <svg className="size-4" fill="none" viewBox="0 0 16 16"><path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </button>
-                      </div>
+              </div>
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Administrative Expenses</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦50.52M</p>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
+                      <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#027a48]">−26.2% vs FY 2024</span>
+                  </div>
+                  <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">FY 2025 · Unaudited financials</a>
+                </div>
+              </div>
+            </div>
+            <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Metric", "Extracted From", "AI Confidence", "Extraction Date"].map(h => (
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
                     ))}
-                  </div>
-                )}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[
+                    { metric: "Revenue (₦2.2M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "94%", date: "01/2026" },
+                    { metric: "Admin Expenses (₦50.52M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "96%", date: "01/2026" },
+                    { metric: "Net Loss (₦48.32M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "95%", date: "01/2026" },
+                    { metric: "Prior Year Revenue (₦6.27M)", source: "Omatek FY 2024 Financial Statements", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "92%", date: "2024" },
+                    { metric: "Admin Expenses FY 2024 (₦68.41M)", source: "Omatek FY 2024 Financial Statements", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "93%", date: "2024" },
+                  ].map((row, i) => {
+                    const p = getConfidencePill(row.confidence)
+                    return (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
+                        <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
+                        <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
+                        <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-                <div className="flex justify-center">
-                  <button onClick={handleUpload} className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors">
-                    <svg className="size-4" fill="none" viewBox="0 0 20 20">
-                      <path d="M10 13.333V3.333M10 3.333L6.667 6.667M10 3.333L13.333 6.667" stroke="#EAECF0" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M3.333 13.333v1.334A2.333 2.333 0 0 0 5.667 17h8.666a2.333 2.333 0 0 0 2.334-2.333v-1.334" stroke="#EAECF0" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Upload & Analyze</span>
-                  </button>
-                </div>
-                {uploadError && (
-                  <p className="text-[13px] text-[#b42318] bg-[#fef3f2] border border-[#fecdca] rounded-lg px-3 py-2 text-center">{uploadError}</p>
-                )}
-              </>
-            )}
-
-            {/* ── ANALYZING: loading spinner ── */}
-            {modalStep === 'analyzing' && (
-              <div className="flex flex-col items-center gap-5 py-8">
-                <div className="relative size-16">
-                  <svg className="size-16 animate-spin" viewBox="0 0 64 64" fill="none">
-                    <circle cx="32" cy="32" r="28" stroke="#e5e7eb" strokeWidth="6"/>
-                    <path d="M32 4a28 28 0 0 1 28 28" stroke="#144430" strokeWidth="6" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <div className="text-center">
-                  <p className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">Analyzing documents…</p>
-                  <p className="text-[13px] text-[#667085] mt-1">AI is extracting key metrics and flagging discrepancies. This may take a moment.</p>
-                </div>
-                <div className="flex flex-col gap-2 w-full">
-                  {["Parsing document structure", "Extracting financial metrics", "Identifying discrepancies", "Generating summary"].map((step, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-[#f9fafb] rounded-lg">
-                      <div className="size-4 rounded-full border-2 border-[#144430] border-t-transparent animate-spin shrink-0" style={{ animationDelay: `${i * 0.2}s` }} />
-                      <span className="text-[13px] text-[#344054]">{step}</span>
-                    </div>
-                  ))}
+        {/* Market */}
+        {activeTab === "market" && (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-2 gap-5 max-w-2xl">
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Market Cap</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦6.94B</p>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#667085]">Rank #125 on NGX</span>
+                  <a href="https://stockanalysis.com/quote/ngx/OMATEK/statistics/" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">Stock Analysis · Apr 8, 2026</a>
                 </div>
               </div>
-            )}
-
-            {/* ── COMPLETE: analysis results + Save button ── */}
-            {modalStep === 'complete' && (
-              <>
-                <div className="flex items-center gap-2 text-[#027a48]">
-                  <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Analysis complete. Extracted metrics and any flagged disprecpanices will appear in their respective tabs.</span>
-                </div>
-
-                <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-4">
-                  <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black">Key Findings</p>
-                  <p className="text-[13px] text-[#475467] leading-[20px]">
-                    The AI identified several critical financial metrics across the uploaded documents. Revenue for FY 2025 stands at ₦2.2M — a significant decline of 64.9% compared to the ₦6.27M recorded in FY 2024. Administrative expenses decreased by 26.2% to ₦50.52M, suggesting ongoing cost-reduction measures. Net loss for the period is ₦48.32M. Market cap is currently ₦6.94B with a share price of ₦2.47 on the NGX, reflecting a recent 8.91% uptick.
-                  </p>
-                  <p className="text-[13px] text-[#475467] leading-[20px]">
-                    Three high-confidence discrepancies were flagged for review. A ₦1.9B gap was detected between reported short-term borrowings and reconciled payables across two documents, consistent with previously reported accounting inconsistencies. Additionally, accrued expenses of ₦2.76B appear understated relative to prior period adjustments, and one revenue line item could not be cross-referenced to a supporting invoice. These findings have been surfaced in the Discrepancies tab for further action.
-                  </p>
-                </div>
-
-                <div className="flex justify-center">
-                  <button onClick={handleSave} className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors">
-                    <svg className="size-4" viewBox="0 0 20 20" fill="none">
-                      <circle cx="10" cy="10" r="7.5" stroke="#EAECF0" strokeWidth="1.5"/>
-                      <path d="M6.5 10L9 12.5L13.5 7.5" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Share Price</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦2.47</p>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
+                      <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Complete Analysis</span>
-                  </button>
+                    <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#027a48]">+8.91%</span>
+                  </div>
+                  <a href="https://afx.kwayisi.org/ngx/omatek.html" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">AFX NGX Quote · Apr 8, 2026</a>
                 </div>
-              </>
-            )}
+              </div>
+            </div>
+            <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Metric", "Extracted From", "AI Confidence", "Extraction Date"].map(h => (
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[
+                    { metric: "Market Cap (₦6.94B)", source: "Stock Analysis / NGX", sourceUrl: "https://stockanalysis.com/quote/ngx/OMATEK/statistics/", confidence: "98%", date: "04/08/2026" },
+                    { metric: "Share Price (₦2.47)", source: "AFX NGX Quote", sourceUrl: "https://afx.kwayisi.org/ngx/omatek.html", confidence: "99%", date: "04/08/2026" },
+                    { metric: "24h Price Change (+8.91%)", source: "AFX NGX Quote", sourceUrl: "https://afx.kwayisi.org/ngx/omatek.html", confidence: "99%", date: "04/08/2026" },
+                    { metric: "NGX Rank (#125)", source: "Stock Analysis / NGX", sourceUrl: "https://stockanalysis.com/quote/ngx/OMATEK/statistics/", confidence: "97%", date: "04/08/2026" },
+                  ].map((row, i) => {
+                    const p = getConfidencePill(row.confidence)
+                    return (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
+                        <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
+                        <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
+                        <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
+        {/* Operations */}
+        {activeTab === "operations" && (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-2 gap-5 max-w-2xl">
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Number of Employees</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">~80</p>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#667085]">Full-time staff</span>
+                  <a href="https://www.african-markets.com/index.php/en/stock-markets/ngse/listed-companies/company?code=OMATEK" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">African Markets · FY 2024</a>
+                </div>
+              </div>
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Salaries & Staff Costs</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦24.3M</p>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <svg className="size-3.5 shrink-0 text-[#b42318]" viewBox="0 0 14 14" fill="none">
+                      <path d="M7 3V11M7 11L3 7M7 11L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#b42318]">+4.2% vs prior year</span>
+                  </div>
+                  <p className="text-[11px] text-[#98a2b3]">FY 2025 · Sample data</p>
+                </div>
+              </div>
+            </div>
+            <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Metric", "Extracted From", "AI Confidence", "Extraction Date"].map(h => (
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[
+                    { metric: "Headcount (~80 employees)", source: "African Markets Profile", sourceUrl: "https://www.african-markets.com/index.php/en/stock-markets/ngse/listed-companies/company?code=OMATEK", confidence: "82%", date: "2024" },
+                    { metric: "Admin Expenses FY 2025 (₦50.52M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "91%", date: "01/2026" },
+                    { metric: "Admin Expenses FY 2024 (₦68.41M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "90%", date: "01/2026" },
+                    { metric: "Admin Expenses FY 2023 (₦64.01M)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "88%", date: "01/2026" },
+                  ].map((row, i) => {
+                    const p = getConfidencePill(row.confidence)
+                    return (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
+                        <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
+                        <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
+                        <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
+        {/* Financial Health */}
+        {activeTab === "financialHealth" && (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-2 gap-5 max-w-2xl">
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Total Debt</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦1.009B</p>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#667085]">Short-term borrowings</span>
+                  <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">FY 2025 · Unaudited financials</a>
+                </div>
+              </div>
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-3">
+                <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Long-term Debt Paid Off</p>
+                <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">₦0</p>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
+                      <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span className="text-[12px] font-['Figtree:Medium',sans-serif] font-medium text-[#027a48]">Fully settled</span>
+                  </div>
+                  <a href="https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#98a2b3] underline underline-offset-2 hover:text-[#667085] transition-colors">BOI & First Bank loans · FY 2025</a>
+                </div>
+              </div>
+            </div>
+            <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Metric", "Extracted From", "AI Confidence", "Extraction Date"].map(h => (
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[
+                    { metric: "Short-term Borrowings (₦1.009B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "95%", date: "01/2026" },
+                    { metric: "Long-term Loans (₦0, fully settled)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "97%", date: "01/2026" },
+                    { metric: "Trade & Other Payables (₦3.47B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "93%", date: "01/2026" },
+                    { metric: "Accrued Expenses (₦2.76B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "92%", date: "01/2026" },
+                    { metric: "Total Liabilities (₦5.1B)", source: "Omatek FY 2025 Unaudited Financials", sourceUrl: "https://doclib.ngxgroup.com/Financial_NewsDocs/45931_OMATEK_VENTURES_PLC-_YEAR_END_-_FINANCIAL_STATEMENT_FOR_2025_FINANCIAL_STATEMENTS_JANUARY_2026.pdf", confidence: "94%", date: "01/2026" },
+                  ].map((row, i) => {
+                    const p = getConfidencePill(row.confidence)
+                    return (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-[14px] text-black font-['Figtree:Medium',sans-serif]">{row.metric}</td>
+                        <td className="px-6 py-4 text-[14px] text-gray-600"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-black transition-colors">{row.source}</a></td>
+                        <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>{p.label}</span></td>
+                        <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">{row.date}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-      </>}
-
+      </div>
     </div>
-  );
+  )
 }
