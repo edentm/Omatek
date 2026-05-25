@@ -38,11 +38,9 @@ export default function AIAnalysis() {
 
   const selectedPeriod = TIME_PERIODS.find(p => p.value === timePeriod) ?? TIME_PERIODS[0]
 
-  const PlaceholderCards = () => (
-    <div className="grid grid-cols-2 gap-5">
-      {[0, 1, 2, 3].map(i => (
-        <div key={i} className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 min-h-[140px]" />
-      ))}
+  const Card = ({ label }: { label: string }) => (
+    <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 min-h-[140px]">
+      <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">{label}</p>
     </div>
   )
 
@@ -117,10 +115,36 @@ export default function AIAnalysis() {
       {/* Tab content */}
       <div className="w-full">
 
-        {activeTab === "profit" && <PlaceholderCards />}
-        {activeTab === "market" && <PlaceholderCards />}
-        {activeTab === "operations" && <PlaceholderCards />}
-        {activeTab === "financialHealth" && <PlaceholderCards />}
+        {activeTab === "profit" && (
+          <div className="grid grid-cols-2 gap-5">
+            <Card label="Revenue" />
+            <Card label="Administrative Expenses" />
+            <Card label="Taxes Owed" />
+            <Card label="Revenue Trend" />
+            <Card label="Expense Trend" />
+          </div>
+        )}
+
+        {activeTab === "market" && (
+          <div className="grid grid-cols-2 gap-5">
+            <Card label="Market Cap" />
+            <Card label="Share Price" />
+          </div>
+        )}
+
+        {activeTab === "operations" && (
+          <div className="grid grid-cols-2 gap-5">
+            <Card label="Number of Employees" />
+            <Card label="Salaries & Staff Costs" />
+          </div>
+        )}
+
+        {activeTab === "financialHealth" && (
+          <div className="grid grid-cols-2 gap-5">
+            <Card label="Total Debt" />
+            <Card label="Long-term Debt Paid Off" />
+          </div>
+        )}
 
       </div>
     </div>
