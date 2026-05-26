@@ -201,19 +201,19 @@ export default function DashboardLayout() {
                 </div>
               </button>
 
-              {/* Reports */}
-              <button onClick={() => navigate("/reports")} className={navBtn("/reports").btn}>
-                <div className="flex items-center gap-[12px] pl-[16px]">
-                  <FileText className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/reports").icon} />
-                  <p className={navBtn("/reports").text}>Reports</p>
-                </div>
-              </button>
-
               {/* AI Document Analysis */}
               <button onClick={() => navigate("/documents")} className={navBtn("/documents").btn}>
                 <div className="flex items-center gap-[12px] pl-[16px]">
                   <Brain className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/documents").icon} />
                   <p className={navBtn("/documents").text}>AI Document Analysis</p>
+                </div>
+              </button>
+
+              {/* Reports */}
+              <button onClick={() => navigate("/reports")} className={navBtn("/reports").btn}>
+                <div className="flex items-center gap-[12px] pl-[16px]">
+                  <FileText className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/reports").icon} />
+                  <p className={navBtn("/reports").text}>Reports</p>
                 </div>
               </button>
 
