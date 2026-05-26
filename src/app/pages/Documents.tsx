@@ -9,7 +9,19 @@ type Document = {
   uploadDate: string;
   uploadedBy: string;
   uploadedByRole: string;
+  status: "Approved" | "Needs Review";
+  approvalDate: string;
+  aiConfidence: string;
   processing?: boolean;
+};
+
+const getConfidencePill = (confidence: string) => {
+  const value = parseInt(confidence);
+  if (isNaN(value)) return { label: "—", classes: "bg-[#f2f4f7] text-[#667085]" };
+  if (value >= 90) return { label: `${confidence} - Very High`, classes: "bg-[#ecfdf3] text-[#027a48]" };
+  if (value >= 80) return { label: `${confidence} - High`, classes: "bg-[#e8f0fe] text-[#1a56db]" };
+  if (value >= 60) return { label: `${confidence} - Moderate`, classes: "bg-[#fef0c7] text-[#dc6803]" };
+  return { label: `${confidence} - Low`, classes: "bg-[#fef3f2] text-[#b42318]" };
 };
 
 export default function Documents() {
@@ -17,10 +29,13 @@ export default function Documents() {
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [docsError, setDocsError] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const [searchQuery, setSearchQuery] = useState("");
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
   const [uploadDateFrom, setUploadDateFrom] = useState("");
   const [uploadDateTo, setUploadDateTo] = useState("");
 
@@ -38,16 +53,30 @@ export default function Documents() {
   useEffect(() => {
     getDocuments()
       .then((data: unknown[]) => {
-        const mapped = (data as Record<string, unknown>[]).map((d) => ({
-          id: d.id as number,
-          title: (d.originalFilename ?? d.filename ?? "Untitled") as string,
-          type: ((d.fileType ?? d.file_type ?? "") as string).toUpperCase() || "—",
-          uploadDate: d.createdAt
-            ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
-            : "—",
-          uploadedBy: (d.uploadedByName ?? d.uploadedBy ?? "Admin") as string,
-          uploadedByRole: "",
-        }));
+        const mapped = (data as Record<string, unknown>[]).map((d) => {
+          const isLocked = d.isLocked as boolean | undefined;
+          const confidence = d.confidenceScore as number | null | undefined;
+          const confidenceStr = confidence != null
+            ? `${Math.round(Number(confidence) * (Number(confidence) <= 1 ? 100 : 1))}%`
+            : "—";
+          const approvedAt = (d.signedAt ?? d.finalizedAt ?? d.signed_at ?? d.finalized_at ?? null) as string | null;
+          const formatDate = (iso: string) => {
+            const dt = new Date(iso);
+            if (isNaN(dt.getTime())) return iso;
+            return dt.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+          };
+          return {
+            id: d.id as number,
+            title: (d.originalFilename ?? d.filename ?? "Untitled") as string,
+            type: ((d.fileType ?? d.file_type ?? "") as string).toUpperCase() || "—",
+            uploadDate: d.createdAt ? formatDate(d.createdAt as string) : "—",
+            uploadedBy: (d.uploadedByName ?? d.uploadedBy ?? "Admin") as string,
+            uploadedByRole: "",
+            status: (isLocked ? "Approved" : "Needs Review") as "Approved" | "Needs Review",
+            approvalDate: approvedAt ? formatDate(approvedAt) : "—",
+            aiConfidence: confidenceStr,
+          };
+        });
         setDocuments(mapped);
       })
       .catch((err: Error) => setDocsError(err.message))
@@ -57,16 +86,30 @@ export default function Documents() {
   const refreshDocuments = () => {
     getDocuments()
       .then((data: unknown[]) => {
-        const mapped = (data as Record<string, unknown>[]).map((d) => ({
-          id: d.id as number,
-          title: (d.originalFilename ?? d.filename ?? "Untitled") as string,
-          type: ((d.fileType ?? d.file_type ?? "") as string).toUpperCase() || "—",
-          uploadDate: d.createdAt
-            ? new Date(d.createdAt as string).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
-            : "—",
-          uploadedBy: (d.uploadedByName ?? d.uploadedBy ?? "Admin") as string,
-          uploadedByRole: "",
-        }));
+        const mapped = (data as Record<string, unknown>[]).map((d) => {
+          const isLocked = d.isLocked as boolean | undefined;
+          const confidence = d.confidenceScore as number | null | undefined;
+          const confidenceStr = confidence != null
+            ? `${Math.round(Number(confidence) * (Number(confidence) <= 1 ? 100 : 1))}%`
+            : "—";
+          const approvedAt = (d.signedAt ?? d.finalizedAt ?? d.signed_at ?? d.finalized_at ?? null) as string | null;
+          const formatDate = (iso: string) => {
+            const dt = new Date(iso);
+            if (isNaN(dt.getTime())) return iso;
+            return dt.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+          };
+          return {
+            id: d.id as number,
+            title: (d.originalFilename ?? d.filename ?? "Untitled") as string,
+            type: ((d.fileType ?? d.file_type ?? "") as string).toUpperCase() || "—",
+            uploadDate: d.createdAt ? formatDate(d.createdAt as string) : "—",
+            uploadedBy: (d.uploadedByName ?? d.uploadedBy ?? "Admin") as string,
+            uploadedByRole: "",
+            status: (isLocked ? "Approved" : "Needs Review") as "Approved" | "Needs Review",
+            approvalDate: approvedAt ? formatDate(approvedAt) : "—",
+            aiConfidence: confidenceStr,
+          };
+        });
         setDocuments(mapped);
       })
       .catch(() => {});
@@ -99,7 +142,6 @@ export default function Documents() {
       const uploadPromises = uploadedFiles.map(async (file) => {
         const { jobId, documentId } = await uploadDocument(file);
 
-        // Optimistically add to documents list with processing flag
         const optimisticEntry: Document = {
           id: documentId,
           title: file.name,
@@ -107,48 +149,33 @@ export default function Documents() {
           uploadDate: 'Today',
           uploadedBy: '…',
           uploadedByRole: '',
+          status: "Needs Review",
+          approvalDate: "—",
+          aiConfidence: "—",
           processing: true,
         };
         setDocuments(prev => {
-          // Avoid duplicate if already in list
           if (prev.some(d => d.id === documentId)) return prev;
           return [optimisticEntry, ...prev];
         });
         setProcessingIds(prev => new Set(prev).add(documentId));
 
-        // Poll until job complete
         await new Promise<void>((resolve, reject) => {
           const interval = setInterval(async () => {
             try {
               const status = await pollJobStatus(jobId);
-              if (status.status === "complete") {
-                clearInterval(interval);
-                resolve();
-              } else if (status.status === "failed") {
-                clearInterval(interval);
-                reject(new Error(status.error ?? "Analysis failed"));
-              }
-            } catch (e) {
-              clearInterval(interval);
-              reject(e);
-            }
+              if (status.status === "complete") { clearInterval(interval); resolve(); }
+              else if (status.status === "failed") { clearInterval(interval); reject(new Error(status.error ?? "Analysis failed")); }
+            } catch (e) { clearInterval(interval); reject(e); }
           }, 2000);
         });
 
-        // Job done — remove from processing set, then refresh to replace optimistic entry
-        setProcessingIds(prev => {
-          const next = new Set(prev);
-          next.delete(documentId);
-          return next;
-        });
+        setProcessingIds(prev => { const next = new Set(prev); next.delete(documentId); return next; });
         refreshDocuments();
         window.dispatchEvent(new CustomEvent('omatek:notify', { detail: { text: `Document "${file.name}" finished processing and is ready for analysis.` } }));
       });
 
-      // Close modal immediately so user can see the processing badges
       setModalStep('complete');
-
-      // Wait for all uploads in background (errors surface via toast)
       await Promise.allSettled(uploadPromises);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -165,6 +192,7 @@ export default function Documents() {
     try {
       await deleteDocument(id);
       setDocuments(prev => prev.filter(d => d.id !== id));
+      setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
       setConfirmDelete(null);
       showDocToast("Document deleted.");
     } catch { showDocToast("Failed to delete."); }
@@ -174,10 +202,39 @@ export default function Documents() {
   const toggleFilter = (name: string) => setOpenFilter(prev => prev === name ? null : name);
 
   const parseDate = (dateStr: string) => {
-    if (!dateStr) return null;
+    if (!dateStr || dateStr === "—") return null;
     const parts = dateStr.split("/");
     if (parts.length !== 3) return null;
     return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+  };
+
+  const getFilteredDocs = () => documents.filter(doc => {
+    if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+    if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
+    if (statusFilter.length > 0 && !statusFilter.includes(doc.status)) return false;
+    if (confidenceFilter.length > 0) {
+      const v = parseInt(doc.aiConfidence);
+      const band = v >= 90 ? "veryHigh" : v >= 80 ? "high" : v >= 60 ? "moderate" : "low";
+      if (!confidenceFilter.includes(band)) return false;
+    }
+    if (uploadDateFrom || uploadDateTo) {
+      const d = parseDate(doc.uploadDate);
+      if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
+      if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
+    }
+    return true;
+  });
+
+  const toggleSelect = (id: number) =>
+    setSelectedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+
+  const toggleSelectAll = (filtered: Document[]) => {
+    const allSelected = filtered.every(d => selectedIds.has(d.id));
+    if (allSelected) {
+      setSelectedIds(prev => { const next = new Set(prev); filtered.forEach(d => next.delete(d.id)); return next; });
+    } else {
+      setSelectedIds(prev => { const next = new Set(prev); filtered.forEach(d => next.add(d.id)); return next; });
+    }
   };
 
   return (
@@ -185,7 +242,7 @@ export default function Documents() {
       <div className="flex justify-between items-start mb-6">
         <div className="flex flex-col gap-[8px]">
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
-            Documents
+            AI Document Analysis
           </h1>
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">
             View and search for uploaded documents
@@ -197,13 +254,7 @@ export default function Documents() {
           className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
         >
           <svg className="size-5" fill="none" viewBox="0 0 20 20">
-            <path
-              d="M10 4.16667V15.8333M4.16667 10H15.8333"
-              stroke="#344054"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M10 4.16667V15.8333M4.16667 10H15.8333" stroke="#344054" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
             Upload and Analyze Documents
@@ -228,18 +279,33 @@ export default function Documents() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         <FilterButton
           label="Type"
           type="checkbox"
           options={[
             { value: "PDF", label: "PDF" },
-            { value: "Excel", label: "Excel" },
+            { value: "XLSX", label: "Excel" },
+            { value: "DOCX", label: "Word" },
+            { value: "CSV", label: "CSV" },
           ]}
           selected={typeFilter}
           onChange={setTypeFilter}
           isOpen={openFilter === "type"}
           onToggle={() => toggleFilter("type")}
+          onClose={() => setOpenFilter(null)}
+        />
+        <FilterButton
+          label="Status"
+          type="checkbox"
+          options={[
+            { value: "Approved", label: "Approved" },
+            { value: "Needs Review", label: "Needs Review" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          isOpen={openFilter === "status"}
+          onToggle={() => toggleFilter("status")}
           onClose={() => setOpenFilter(null)}
         />
         <FilterButton
@@ -253,6 +319,21 @@ export default function Documents() {
           onToggle={() => toggleFilter("uploadDate")}
           onClose={() => setOpenFilter(null)}
         />
+        <FilterButton
+          label="AI Confidence"
+          type="checkbox"
+          options={[
+            { value: "veryHigh", label: "Very High (90% - 100%)" },
+            { value: "high", label: "High (80% - 89%)" },
+            { value: "moderate", label: "Moderate (60% - 79%)" },
+            { value: "low", label: "Low (Below 60%)" },
+          ]}
+          selected={confidenceFilter}
+          onChange={setConfidenceFilter}
+          isOpen={openFilter === "confidence"}
+          onToggle={() => toggleFilter("confidence")}
+          onClose={() => setOpenFilter(null)}
+        />
       </div>
 
       {loadingDocs && <p className="text-[14px] text-[#667085] mb-4">Loading documents…</p>}
@@ -262,7 +343,6 @@ export default function Documents() {
       {!loadingDocs && (
         <>
           {documents.length === 0 ? (
-            /* Full empty state — no documents at all */
             <div className="border border-dashed border-[#d0d5dd] rounded-[12px] flex flex-col items-center justify-center py-20 gap-4">
               <div className="size-14 bg-[#f9fafb] border border-[#eaecf0] rounded-full flex items-center justify-center">
                 <svg className="size-7 text-[#98a2b3]" fill="none" viewBox="0 0 24 24">
@@ -285,108 +365,128 @@ export default function Documents() {
               </button>
             </div>
           ) : (
-            <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Document Title
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Upload Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Uploaded By
-                    </th>
-                    <th className="px-6 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {(() => {
-                    const filtered = documents.filter(doc => {
-                      if (searchQuery && ![doc.title, doc.type, doc.uploadedBy].some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-                      if (typeFilter.length > 0 && !typeFilter.includes(doc.type)) return false;
-                      if (uploadDateFrom || uploadDateTo) {
-                        const d = parseDate(doc.uploadDate);
-                        if (d && uploadDateFrom && d < new Date(uploadDateFrom)) return false;
-                        if (d && uploadDateTo && d > new Date(uploadDateTo)) return false;
-                      }
-                      return true;
-                    });
-                    if (filtered.length === 0) {
-                      return (
+            (() => {
+              const filtered = getFilteredDocs();
+              const allSelected = filtered.length > 0 && filtered.every(d => selectedIds.has(d.id));
+              const someSelected = filtered.some(d => selectedIds.has(d.id));
+
+              return (
+                <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {/* Select-all checkbox */}
+                        <th className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                            onChange={() => toggleSelectAll(filtered)}
+                            className="size-4 rounded border-[#d0d5dd] text-[#144430] cursor-pointer"
+                          />
+                        </th>
+                        {["Title", "Type", "Upload Date", "Uploaded By", "Status", "Approval Date", "AI Confidence in Extraction"].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                        ))}
+                        <th className="px-4 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-[14px] text-[#667085]">
+                          <td colSpan={9} className="px-6 py-12 text-center text-[14px] text-[#667085]">
                             No documents match your filters.
                           </td>
                         </tr>
-                      );
-                    }
-                    return filtered.map((doc) => {
-                      const isProcessing = doc.processing || processingIds.has(doc.id);
-                      return (
-                        <tr key={doc.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center flex-wrap gap-1">
-                              <span className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
-                                {doc.title}
+                      ) : filtered.map((doc) => {
+                        const isProcessing = doc.processing || processingIds.has(doc.id);
+                        const isSelected = selectedIds.has(doc.id);
+                        const confPill = getConfidencePill(doc.aiConfidence);
+                        return (
+                          <tr key={doc.id} className={`hover:bg-gray-50 ${isSelected ? "bg-[#f0f9f4]" : ""}`}>
+                            <td className="px-4 py-4 w-10">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelect(doc.id)}
+                                className="size-4 rounded border-[#d0d5dd] text-[#144430] cursor-pointer"
+                              />
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center flex-wrap gap-1">
+                                <span className="font-['Figtree:Medium',sans-serif] text-[14px] text-black">
+                                  {doc.title}
+                                </span>
+                                {isProcessing && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] bg-[#fef0c7] text-[#dc6803] px-2 py-0.5 rounded-full font-medium ml-2">
+                                    <svg className="animate-spin" style={{ width: 10, height: 10 }} viewBox="0 0 10 10" fill="none">
+                                      <circle cx="5" cy="5" r="4" stroke="#dc6803" strokeWidth="1.5" strokeOpacity="0.3"/>
+                                      <path d="M5 1a4 4 0 0 1 4 4" stroke="#dc6803" strokeWidth="1.5" strokeLinecap="round"/>
+                                    </svg>
+                                    Processing
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                              {doc.type}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                              {doc.uploadDate}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
+                              {doc.uploadedByRole && <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
+                                doc.status === "Approved"
+                                  ? "bg-[#ecfdf3] text-[#027a48]"
+                                  : "bg-[#e8f0fe] text-[#1a56db]"
+                              }`}>
+                                {doc.status}
                               </span>
-                              {isProcessing && (
-                                <span className="inline-flex items-center gap-1 text-[11px] bg-[#fef0c7] text-[#dc6803] px-2 py-0.5 rounded-full font-medium ml-2">
-                                  <svg
-                                    className="animate-spin"
-                                    style={{ width: 10, height: 10 }}
-                                    viewBox="0 0 10 10"
-                                    fill="none"
-                                  >
-                                    <circle cx="5" cy="5" r="4" stroke="#dc6803" strokeWidth="1.5" strokeOpacity="0.3"/>
-                                    <path d="M5 1a4 4 0 0 1 4 4" stroke="#dc6803" strokeWidth="1.5" strokeLinecap="round"/>
-                                  </svg>
-                                  Processing
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-[14px] text-gray-600">
+                              {doc.approvalDate}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              {doc.aiConfidence === "—" ? (
+                                <span className="text-[14px] text-gray-400">—</span>
+                              ) : (
+                                <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${confPill.classes}`}>
+                                  {confPill.label}
                                 </span>
                               )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                            {doc.type}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-[14px] text-gray-600">
-                            {doc.uploadDate}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
-                            <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => openDocument(doc.id)}
-                                disabled={isProcessing}
-                                className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                              >
-                                <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                Open
-                              </button>
-                              <button
-                                onClick={() => setConfirmDelete(doc.id)}
-                                disabled={isProcessing}
-                                className="flex items-center gap-1.5 h-[32px] px-3 border border-[#fecdca] rounded-lg text-[12px] text-[#b42318] hover:bg-[#fef3f2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                              >
-                                <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M2.5 5H17.5M15.8333 5L15 16.6667C15 17.1269 14.8127 17.5681 14.4794 17.8933C14.1461 18.2185 13.6938 18.4007 13.2222 18.4007H6.77778C6.30618 18.4007 5.85395 18.2185 5.52063 17.8933C5.1873 17.5681 5 17.1269 5 16.6667L4.16667 5M7.5 5V3.33333C7.5 3.11232 7.5878 2.90036 7.74408 2.74408C7.90036 2.5878 8.11232 2.5 8.33333 2.5H11.6667C11.8877 2.5 12.0996 2.5878 12.2559 2.74408C12.4122 2.90036 12.5 3.11232 12.5 3.33333V5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    });
-                  })()}
-                </tbody>
-              </table>
-            </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-right">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => openDocument(doc.id)}
+                                  disabled={isProcessing}
+                                  className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  Open
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDelete(doc.id)}
+                                  disabled={isProcessing}
+                                  className="flex items-center gap-1.5 h-[32px] px-3 border border-[#fecdca] rounded-lg text-[12px] text-[#b42318] hover:bg-[#fef3f2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M2.5 5H17.5M15.8333 5L15 16.6667C15 17.1269 14.8127 17.5681 14.4794 17.8933C14.1461 18.2185 13.6938 18.4007 13.2222 18.4007H6.77778C6.30618 18.4007 5.85395 18.2185 5.52063 17.8933C5.1873 17.5681 5 17.1269 5 16.6667L4.16667 5M7.5 5V3.33333C7.5 3.11232 7.5878 2.90036 7.74408 2.74408C7.90036 2.5878 8.11232 2.5 8.33333 2.5H11.6667C11.8877 2.5 12.0996 2.5878 12.2559 2.74408C12.4122 2.90036 12.5 3.11232 12.5 3.33333V5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()
           )}
         </>
       )}
@@ -419,15 +519,8 @@ export default function Documents() {
       {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={modalStep === 'analyzing' ? undefined : closeModal}
-          />
-
-          {/* Modal card */}
+          <div className="absolute inset-0 bg-black/40" onClick={modalStep === 'analyzing' ? undefined : closeModal} />
           <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[680px] mx-4 p-8 flex flex-col gap-6">
-            {/* Header */}
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[22px] text-black leading-tight">
@@ -446,7 +539,6 @@ export default function Documents() {
               )}
             </div>
 
-            {/* ── IDLE: drop zone + file list + upload button ── */}
             {modalStep === 'idle' && (
               <>
                 <div
@@ -488,9 +580,7 @@ export default function Documents() {
                   </div>
                 )}
 
-                {uploadError && (
-                  <p className="text-[13px] text-[#b42318] text-center">{uploadError}</p>
-                )}
+                {uploadError && <p className="text-[13px] text-[#b42318] text-center">{uploadError}</p>}
 
                 <div className="flex justify-center">
                   <button onClick={handleUpload} disabled={uploadedFiles.length === 0} className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors disabled:opacity-60">
@@ -504,15 +594,12 @@ export default function Documents() {
               </>
             )}
 
-            {/* ── ANALYZING: loading spinner ── */}
             {modalStep === 'analyzing' && (
               <div className="flex flex-col items-center gap-5 py-8">
-                <div className="relative size-16">
-                  <svg className="size-16 animate-spin" viewBox="0 0 64 64" fill="none">
-                    <circle cx="32" cy="32" r="28" stroke="#e5e7eb" strokeWidth="6"/>
-                    <path d="M32 4a28 28 0 0 1 28 28" stroke="#144430" strokeWidth="6" strokeLinecap="round"/>
-                  </svg>
-                </div>
+                <svg className="size-16 animate-spin" viewBox="0 0 64 64" fill="none">
+                  <circle cx="32" cy="32" r="28" stroke="#e5e7eb" strokeWidth="6"/>
+                  <path d="M32 4a28 28 0 0 1 28 28" stroke="#144430" strokeWidth="6" strokeLinecap="round"/>
+                </svg>
                 <div className="text-center">
                   <p className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">Analyzing documents…</p>
                   <p className="text-[13px] text-[#667085] mt-1">AI is extracting key metrics and flagging discrepancies. This may take a moment.</p>
@@ -528,7 +615,6 @@ export default function Documents() {
               </div>
             )}
 
-            {/* ── COMPLETE ── */}
             {modalStep === 'complete' && (
               <>
                 <div className="flex items-center gap-2 text-[#027a48]">
@@ -537,24 +623,9 @@ export default function Documents() {
                   </svg>
                   <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Upload started. Documents are being analyzed in the background — watch for the Processing badge in the table.</span>
                 </div>
-
-                <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-4">
-                  <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black">Key Findings</p>
-                  <p className="text-[13px] text-[#475467] leading-[20px]">
-                    The AI identified several critical financial metrics across the uploaded documents. Revenue for FY 2025 stands at ₦2.2M — a significant decline of 64.9% compared to the ₦6.27M recorded in FY 2024. Administrative expenses decreased by 26.2% to ₦50.52M, suggesting ongoing cost-reduction measures. Net loss for the period is ₦48.32M. Market cap is currently ₦6.94B with a share price of ₦2.47 on the NGX, reflecting a recent 8.91% uptick.
-                  </p>
-                  <p className="text-[13px] text-[#475467] leading-[20px]">
-                    Three high-confidence discrepancies were flagged for review. A ₦1.9B gap was detected between reported short-term borrowings and reconciled payables across two documents, consistent with previously reported accounting inconsistencies. Additionally, accrued expenses of ₦2.76B appear understated relative to prior period adjustments, and one revenue line item could not be cross-referenced to a supporting invoice. These findings have been surfaced in the Discrepancies tab for further action.
-                  </p>
-                </div>
-
                 <div className="flex justify-center">
                   <button onClick={closeModal} className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors">
-                    <svg className="size-4" viewBox="0 0 20 20" fill="none">
-                      <circle cx="10" cy="10" r="7.5" stroke="#EAECF0" strokeWidth="1.5"/>
-                      <path d="M6.5 10L9 12.5L13.5 7.5" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Complete Analysis</span>
+                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">Done</span>
                   </button>
                 </div>
               </>
