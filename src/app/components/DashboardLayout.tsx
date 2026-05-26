@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { Home, Brain, FileText, Files, Users, Settings, LogOut, MessageSquare, Bell, Menu, ClipboardList } from "lucide-react";
+import { Home, Brain, FileText, LineChart, Users, Settings, LogOut, MessageSquare, Menu } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi, getDashboardMetrics } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
@@ -188,11 +188,11 @@ export default function DashboardLayout() {
                 </div>
               </button>
 
-              {/* AI Analysis — shows anomaly badge when there are unresolved anomalies */}
+              {/* Metrics Summary — shows anomaly badge when there are unresolved anomalies */}
               <button onClick={() => navigate("/ai-analysis")} className={navBtn("/ai-analysis").btn}>
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Brain className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/ai-analysis").icon} />
-                  <p className={navBtn("/ai-analysis").text}>AI Analysis</p>
+                  <LineChart className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/ai-analysis").icon} />
+                  <p className={navBtn("/ai-analysis").text}>Metrics Summary</p>
                   {anomalyCount > 0 && (
                     <span className="ml-auto mr-3 min-w-[18px] h-[18px] px-1 bg-[#b42318] rounded-full text-white text-[10px] font-semibold flex items-center justify-center">
                       {anomalyCount > 99 ? "99+" : anomalyCount}
@@ -209,11 +209,11 @@ export default function DashboardLayout() {
                 </div>
               </button>
 
-              {/* Documents */}
+              {/* AI Document Analysis */}
               <button onClick={() => navigate("/documents")} className={navBtn("/documents").btn}>
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Files className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/documents").icon} />
-                  <p className={navBtn("/documents").text}>Documents</p>
+                  <Brain className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/documents").icon} />
+                  <p className={navBtn("/documents").text}>AI Document Analysis</p>
                 </div>
               </button>
 
