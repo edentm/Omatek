@@ -13,7 +13,7 @@ const DEFAULT_TITLE = "New AI Chat";
 
 export default function ChatBotWidget() {
   const { isExhausted, deductTokens } = useTokenLedger();
-  const { chatOpen: isOpen, setChatOpen: setIsOpen } = useChatPanel();
+  const { chatOpen: isOpen, setChatOpen: setIsOpen, sidePanelOpen } = useChatPanel();
   const [messages, setMessages] = useState<Message[]>([{ role: "assistant", text: GREETING }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -187,13 +187,13 @@ export default function ChatBotWidget() {
           className="fixed bottom-6 right-6 z-[1100] size-12 bg-white border border-[#d0d5dd] rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
           title="Open AI Assistant"
         >
-          <img src={chatbotIcon} className="size-6" alt="" />
+          <img src={chatbotIcon} className="size-10" alt="" />
         </button>
       )}
 
       {/* Side panel */}
       {isOpen && (
-        <div className="fixed top-0 right-0 h-screen w-[420px] bg-white border-l border-[#eaecf0] shadow-2xl z-[900] flex flex-col">
+        <div className={`fixed top-0 right-0 h-screen w-[420px] bg-white border-l border-[#eaecf0] z-[900] flex flex-col${sidePanelOpen ? "" : " shadow-2xl"}`}>
 
           {/* Header */}
           <div className="px-4 py-3 border-b border-[#eaecf0] flex items-center gap-1 shrink-0">
@@ -203,7 +203,7 @@ export default function ChatBotWidget() {
               {/* Bot avatar — only shown for named (non-default) chats */}
               {!isDefaultTitle && !isRenaming && (
                 <div className="size-[26px] rounded-full bg-[#f2f4f7] flex items-center justify-center shrink-0">
-                  <img src={chatbotIcon} className="size-[13px]" alt="" />
+                  <img src={chatbotIcon} className="size-[60px]" alt="" />
                 </div>
               )}
 
@@ -336,7 +336,7 @@ export default function ChatBotWidget() {
           <div className="flex-1 overflow-y-auto px-5 flex flex-col">
             {isGreetingOnly ? (
               <div className="flex-1 flex flex-col justify-end pb-5">
-                <img src={chatbotIcon} className="size-12 mb-3" alt="" />
+                <img src={chatbotIcon} className="size-20 mb-3" alt="" />
                 <p className="font-['Figtree:Medium',sans-serif] font-medium text-[20px] text-black leading-tight">
                   {GREETING}
                 </p>

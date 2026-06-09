@@ -7,7 +7,7 @@ import { useChatPanel } from "../../contexts/ChatPanelContext";
 
 export default function Reports() {
   const { isExhausted } = useTokenLedger();
-  const { chatOpen } = useChatPanel();
+  const { chatOpen, setSidePanelOpen } = useChatPanel();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
@@ -15,6 +15,13 @@ export default function Reports() {
   const [reportContent, setReportContent] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const open = !!(selectedReport && isPanelExpanded);
+    setSidePanelOpen(open);
+    return () => setSidePanelOpen(false);
+  }, [selectedReport, isPanelExpanded, setSidePanelOpen]);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), 300);
     return () => clearTimeout(t);
@@ -435,7 +442,7 @@ export default function Reports() {
               return filtered.map((report, index) => (
                 <tr
                   key={index}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className={`hover:bg-gray-50 cursor-pointer ${selectedReport?.apiId === report.apiId ? "bg-gray-100" : ""}`}
                   onClick={() => openReport(report)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -471,7 +478,7 @@ export default function Reports() {
           className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
             isPanelExpanded ? (isFullWidth ? '' : 'w-[500px]') : 'w-0'
           }`}
-          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, ...(isPanelExpanded && isFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, boxShadow: chatOpen ? '-12px 0 20px rgba(0,0,0,0.08)' : undefined, ...(isPanelExpanded && isFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
         >
           {isPanelExpanded && (
             <div className="flex flex-col h-full">

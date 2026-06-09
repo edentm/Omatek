@@ -26,7 +26,7 @@ const getConfidencePill = (confidence: string) => {
 };
 
 export default function Documents() {
-  const { chatOpen } = useChatPanel();
+  const { chatOpen, setSidePanelOpen } = useChatPanel();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -79,6 +79,12 @@ export default function Documents() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [docToast, setDocToast] = useState("");
   const showDocToast = (msg: string) => { setDocToast(msg); setTimeout(() => setDocToast(""), 3000); };
+
+  useEffect(() => {
+    const open = !!(selectedDocument && isPanelExpanded) || showComparePanel;
+    setSidePanelOpen(open);
+    return () => setSidePanelOpen(false);
+  }, [selectedDocument, isPanelExpanded, showComparePanel, setSidePanelOpen]);
 
   useEffect(() => {
     getDocuments()
@@ -512,7 +518,7 @@ export default function Documents() {
                         return (
                           <tr
                             key={doc.id}
-                            className={`cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-[#f0f9f4]" : ""} ${selectedDocument?.id === doc.id ? "bg-[#f0f9f4]" : ""}`}
+                            className={`cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-gray-100" : ""} ${selectedDocument?.id === doc.id ? "bg-gray-100" : ""}`}
                             onClick={() => openDocPanel(doc)}
                           >
                             <td className="px-4 py-4 w-10" onClick={e => e.stopPropagation()}>
@@ -545,7 +551,7 @@ export default function Documents() {
                             <td className="px-4 py-4 whitespace-nowrap text-[14px] text-gray-600">
                               {doc.uploadDate}
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 whitespace-nowrap">
                               <div className="text-[14px] text-gray-900">{doc.uploadedBy}</div>
                               {doc.uploadedByRole && <div className="text-[12px] text-gray-500">{doc.uploadedByRole}</div>}
                             </td>
@@ -625,7 +631,7 @@ export default function Documents() {
           className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
             isPanelExpanded ? (isFullWidth ? '' : 'w-[500px]') : 'w-0'
           }`}
-          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, ...(isPanelExpanded && isFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, boxShadow: chatOpen ? '-12px 0 20px rgba(0,0,0,0.08)' : undefined, ...(isPanelExpanded && isFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
         >
           {isPanelExpanded && (
             <div className="flex flex-col h-full">
@@ -1109,7 +1115,7 @@ export default function Documents() {
           className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
             compareIsFullWidth ? '' : 'w-[500px]'
           }`}
-          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, ...(compareIsFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, boxShadow: chatOpen ? '-12px 0 20px rgba(0,0,0,0.08)' : undefined, ...(compareIsFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
         >
           <div className="flex flex-col h-full">
             {/* Header */}
