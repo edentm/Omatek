@@ -99,10 +99,10 @@ export default function Dashboard() {
   const selectedPeriod = TIME_PERIODS.find(p => p.value === timePeriod) ?? TIME_PERIODS[0]
 
   return (
-    <div className="bg-white h-full w-full p-8 overflow-y-auto">
+    <div className="bg-white h-full w-full p-8 flex flex-col overflow-hidden">
 
       {/* Header */}
-      <div className="flex justify-between items-start mb-6 gap-4">
+      <div className="flex justify-between items-start mb-6 gap-4 shrink-0">
         <div className="flex flex-col gap-[4px]">
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
             Welcome, {firstName}
@@ -153,7 +153,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8 shrink-0">
 
         {/* Revenue */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
@@ -256,12 +256,12 @@ export default function Dashboard() {
       </div>
 
       {/* Revenue Trend + Expense Trend */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-6 flex-1 min-h-0">
 
         {/* Revenue Trend */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-4">
           <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Revenue Trend</p>
-          <div className="flex-1 min-h-[160px] flex flex-col items-center justify-center gap-3 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
             <svg className="size-8 text-[#d0d5dd]" fill="none" viewBox="0 0 24 24">
               <path d="M3 17l4-8 4 4 4-6 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -274,7 +274,7 @@ export default function Dashboard() {
         {/* Expense Trend */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 flex flex-col gap-4">
           <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Expense Trend</p>
-          <div className="flex-1 min-h-[160px] flex flex-col items-center justify-center gap-3 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
             <svg className="size-8 text-[#d0d5dd]" fill="none" viewBox="0 0 24 24">
               <path d="M3 17l4-8 4 4 4-6 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>

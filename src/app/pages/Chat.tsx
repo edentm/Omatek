@@ -14,7 +14,7 @@ export default function Chat() {
 
   const [currentSessionId, setCurrentSessionId] = useState<string>(() => crypto.randomUUID());
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", text: "Hi! I'm your Omatek financial analyst. Select one or more documents below, then ask me anything about your financial data." },
+    { role: "assistant", text: "Hi! I'm your Omatek AI Assistant. Ask me anything about your financial data — you can optionally select specific documents below to focus my analysis." },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -84,14 +84,14 @@ export default function Chat() {
 
   const startNewChat = () => {
     setCurrentSessionId(crypto.randomUUID());
-    setMessages([{ role: "assistant", text: "Hi! I'm your Omatek financial analyst. Select one or more documents below, then ask me anything about your financial data." }]);
+    setMessages([{ role: "assistant", text: "Hi! I'm your Omatek AI Assistant. Ask me anything about your financial data — you can optionally select specific documents below to focus my analysis." }]);
     setInput("");
     setReportSuccess(null);
   };
 
   const loadSession = (session: Session) => {
     setCurrentSessionId(session.sessionId ?? crypto.randomUUID());
-    const msgs: Message[] = [{ role: "assistant", text: "Hi! I'm your Omatek financial analyst. Select one or more documents below, then ask me anything about your financial data." }];
+    const msgs: Message[] = [{ role: "assistant", text: "Hi! I'm your Omatek AI Assistant. Ask me anything about your financial data — you can optionally select specific documents below to focus my analysis." }];
     for (const item of [...session.items].reverse()) {
       msgs.push({ role: "user", text: item.question });
       if (item.answer) msgs.push({ role: "assistant", text: item.answer, tokensUsed: item.tokensUsed ?? undefined, id: item.id });
@@ -129,7 +129,7 @@ export default function Chat() {
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || loading || selectedDocIds.length === 0 || isExhausted) return;
+    if (!text || loading || isExhausted) return;
     setInput("");
     setMessages(prev => [...prev, { role: "user", text }]);
     setLoading(true);
@@ -216,10 +216,10 @@ export default function Chat() {
         <div className="p-3 border-b border-[#eaecf0]">
           <button
             onClick={startNewChat}
-            className="w-full flex items-center gap-2 h-[36px] px-3 bg-[#144430] text-white rounded-[8px] text-[13px] font-medium hover:bg-[#0f3324] transition-colors"
+            className="w-full flex items-center justify-center gap-2 h-[43px] px-6 bg-white border-[#d0d5dd] border-[0.8px] border-solid rounded-[10px] hover:bg-gray-50 transition-colors"
           >
-            <svg className="size-4" fill="none" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            New Chat
+            <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" stroke="#344054" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">Start New Chat</p>
           </button>
         </div>
 
@@ -266,7 +266,7 @@ export default function Chat() {
         <div className="px-6 pt-6 pb-4 border-b border-[#eaecf0] shrink-0">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h1 className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">Ask AI</h1>
+              <h1 className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight">AI Assistant</h1>
               <div className="flex items-center gap-3 mt-0.5">
                 <p className="text-[14px] text-[#667085]">Ask questions about your uploaded financial documents</p>
                 {conversationTurns > 0 && (
@@ -438,21 +438,20 @@ export default function Chat() {
 
         {/* Input */}
         <div className="px-6 py-4 border-t border-[#eaecf0] shrink-0">
-          {selectedDocIds.length === 0 && !isExhausted && <p className="text-[12px] text-[#dc6803] mb-2">Select at least one document above to ask questions.</p>}
           {balance > 0 && balance < 50000 && <p className="text-[12px] text-[#dc6803] mb-2">Low balance: {balance.toLocaleString()} tokens remaining.</p>}
           <div className="flex gap-3 items-end">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder={isExhausted ? "API balance exhausted — recharge required" : selectedDocIds.length === 0 ? "Select documents above first…" : `Ask about ${selectedDocIds.length === 1 ? (documents.find(d => d.id === selectedDocIds[0])?.title ?? "your document") : `${selectedDocIds.length} documents`}… (Enter to send)`}
+              placeholder={isExhausted ? "API balance exhausted — recharge required" : selectedDocIds.length === 0 ? "Ask me anything about your financial data… (Enter to send)" : `Ask about ${selectedDocIds.length === 1 ? (documents.find(d => d.id === selectedDocIds[0])?.title ?? "your document") : `${selectedDocIds.length} documents`}… (Enter to send)`}
               rows={2}
-              disabled={selectedDocIds.length === 0 || isExhausted}
+              disabled={isExhausted}
               className="flex-1 px-4 py-3 border border-[#d0d5dd] rounded-[10px] text-[14px] text-[#344054] resize-none focus:outline-none focus:border-[#667085] placeholder:text-[#98a2b3] disabled:bg-[#f9fafb] disabled:cursor-not-allowed"
             />
             <button
               onClick={sendMessage}
-              disabled={!input.trim() || loading || selectedDocIds.length === 0 || isExhausted}
+              disabled={!input.trim() || loading || isExhausted}
               className="h-[44px] w-[44px] bg-[#144430] rounded-[10px] flex items-center justify-center hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             >
               <svg className="size-5" viewBox="0 0 20 20" fill="none"><path d="M17.5 10L2.5 2.5L6.25 10L2.5 17.5L17.5 10Z" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>

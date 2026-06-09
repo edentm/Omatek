@@ -683,7 +683,7 @@ export default function Documents() {
                     )}
                     <button
                       onClick={() => openDocument(selectedDocument.id)}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[12px] bg-[#f2f4f7] text-[#344054] border border-[#d0d5dd] hover:bg-[#e4e7ec] transition-colors"
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[12px] bg-white text-[#344054] border border-[#d0d5dd] hover:bg-[#f9fafb] transition-colors"
                     >
                       <svg className="size-3 shrink-0" fill="none" viewBox="0 0 20 20">
                         <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
