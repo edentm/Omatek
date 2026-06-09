@@ -868,9 +868,10 @@ export default function Documents() {
                       );
 
                       const severityStyles: Record<string, string> = {
-                        high:   'bg-[#fef3f2] text-[#b42318] border-[#fca5a5]',
-                        medium: 'bg-[#fef0c7] text-[#dc6803] border-[#fcd34d]',
-                        low:    'bg-[#f2f4f7] text-[#344054] border-[#d0d5dd]',
+                        high:    'bg-[#fff1f2] text-[#e11d48]',
+                        medium:  'bg-[#fffbeb] text-[#d97706]',
+                        warning: 'bg-[#fffbeb] text-[#d97706]',
+                        low:     'bg-[#f8fafc] text-[#64748b]',
                       };
 
                       const fmtKey = (k: string) =>
@@ -896,7 +897,7 @@ export default function Documents() {
                             <div className="flex justify-between items-start mb-1.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="text-[11px] text-[#667085] uppercase tracking-wider">{fmtKey(title)}</span>
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide border ${sStyle}`}>
+                                <span className={`text-[12px] px-3 py-1 rounded-full font-medium ${sStyle}`}>
                                   {severity.charAt(0).toUpperCase() + severity.slice(1)}
                                 </span>
                               </div>
