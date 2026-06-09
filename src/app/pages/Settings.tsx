@@ -48,23 +48,23 @@ export default function Settings() {
         </p>
       </div>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-6 items-stretch">
 
         {(() => {
           const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
           return (
             <div className="flex-1 min-w-0">
-              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6">
-                <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black mb-4">Profile</h2>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="size-12 rounded-full bg-[#ecf3ec] flex items-center justify-center shrink-0">
-                    <span className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">
+              <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 h-full">
+                <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black mb-6">Profile</h2>
+                <div className="flex items-center gap-5 mb-6">
+                  <div className="size-20 rounded-full bg-[#ecf3ec] flex items-center justify-center shrink-0">
+                    <span className="font-['Figtree:Medium',sans-serif] font-medium text-[26px] text-black">
                       {(storedUser?.name ?? "U").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0,2)}
                     </span>
                   </div>
                   <div>
-                    <div className="font-['Figtree:Medium',sans-serif] font-medium text-[16px] text-black">{storedUser?.name ?? "—"}</div>
-                    <div className="text-[13px] text-[#667085]">{storedUser?.email ?? "—"}</div>
+                    <div className="font-['Figtree:Medium',sans-serif] font-medium text-[22px] text-black">{storedUser?.name ?? "—"}</div>
+                    <div className="text-[15px] text-[#667085] mt-0.5">{storedUser?.email ?? "—"}</div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -85,7 +85,7 @@ export default function Settings() {
         })()}
 
         <div className="flex-1 min-w-0">
-          <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6">
+          <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-6 h-full">
           <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[18px] text-black mb-1">
             Change Password
           </h2>
