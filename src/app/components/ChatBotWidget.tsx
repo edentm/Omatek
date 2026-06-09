@@ -366,8 +366,10 @@ export default function ChatBotWidget() {
                     );
                   }
                   return (
-                    <div key={i} className="text-[13px] leading-[22px] text-[#1d2939] whitespace-pre-wrap max-w-[360px]">
-                      {msg.text}
+                    <div key={i} className="flex justify-start">
+                      <div className="bg-[#f2f4f7] text-[#1d2939] px-3.5 py-2.5 rounded-[14px] rounded-tl-[4px] text-[13px] leading-[22px] max-w-[320px] whitespace-pre-wrap">
+                        {msg.text}
+                      </div>
                     </div>
                   );
                 })}
@@ -403,7 +405,7 @@ export default function ChatBotWidget() {
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading || isExhausted}
-                className="size-9 bg-[#144430] rounded-[9px] flex items-center justify-center hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                className="h-10 w-10 bg-[#144430] rounded-[10px] flex items-center justify-center hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
               >
                 <svg className="size-4" viewBox="0 0 20 20" fill="none">
                   <path d="M17.5 10L2.5 2.5L6.25 10L2.5 17.5L17.5 10Z" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
