@@ -1117,22 +1117,43 @@ export default function Documents() {
               {/* Results */}
               {compareResult && !compareLoading && (
                 <div className="flex flex-col gap-5">
-                  {/* Comparative summary */}
+                  {/* AI Insights card */}
                   {(() => {
-                    const summary = String(
+                    const insight = String(
+                      compareResult.aiInsights ??
+                      compareResult.ai_insights ??
+                      compareResult.insights ??
+                      compareResult.findings ??
+                      compareResult.observations ??
+                      compareResult.analysis ??
                       compareResult.comparativeSummary ??
                       compareResult.comparative_summary ??
                       compareResult.summary ??
                       compareResult.comparison ??
                       ''
                     ).trim();
-                    if (!summary) return null;
+                    if (!insight) return (
+                      <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg className="size-3.5 shrink-0" viewBox="0 0 14 14" fill="#144430">
+                            <path d="M7 0 C7.2 2.4 8.1 5.3 13 7 C8.1 8.7 7.2 11.6 7 14 C6.8 11.6 5.9 8.7 1 7 C5.9 5.3 6.8 2.4 7 0Z"/>
+                          </svg>
+                          <p className="text-[11px] font-semibold text-[#144430] uppercase tracking-wider">AI Insights</p>
+                        </div>
+                        <p className="text-[13px] text-[#667085] italic">No comparative insights were returned for these documents.</p>
+                      </div>
+                    );
                     return (
-                      <div>
-                        <p className="text-[11px] text-[#667085] uppercase tracking-wider mb-2">Comparative Summary</p>
+                      <div className="bg-[#f0f7f4] border border-[#a9d4be] rounded-[10px] p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg className="size-3.5 shrink-0" viewBox="0 0 14 14" fill="#144430">
+                            <path d="M7 0 C7.2 2.4 8.1 5.3 13 7 C8.1 8.7 7.2 11.6 7 14 C6.8 11.6 5.9 8.7 1 7 C5.9 5.3 6.8 2.4 7 0Z"/>
+                          </svg>
+                          <p className="text-[11px] font-semibold text-[#144430] uppercase tracking-wider">AI Insights</p>
+                        </div>
                         <div className="flex flex-col gap-2">
-                          {summary.split(/\n\n+/).filter(Boolean).map((para, i) => (
-                            <p key={i} className="text-[13px] text-[#475467] leading-[22px]">{para}</p>
+                          {insight.split(/\n\n+/).filter(Boolean).map((para, i) => (
+                            <p key={i} className="text-[13px] text-[#1a3d2e] leading-[22px]">{para}</p>
                           ))}
                         </div>
                       </div>
