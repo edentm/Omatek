@@ -168,6 +168,21 @@ export const deleteDocument = async (id: number) => {
   return res.json()
 }
 
+export const editDocumentData = async (id: number, body: Record<string, unknown>) => {
+  const res = await authFetch(`/api/documents/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error('Failed to update document')
+  return res.json()
+}
+
+export const approveDocument = async (id: number) => {
+  const res = await authFetch(`/api/documents/${id}/finalize`, { method: 'PUT' })
+  if (!res.ok) throw new Error('Failed to approve document')
+  return res.json()
+}
+
 // ── Analysis ─────────────────────────────────────────────────────────────────
 
 export const getAnalysisMetrics = async () => {

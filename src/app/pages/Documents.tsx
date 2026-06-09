@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import FilterButton from "../components/FilterButton";
-import { getDocuments, uploadDocument, openDocument, pollJobStatus, deleteDocument } from "../../api";
+import { getDocuments, getReports, getReport, uploadDocument, openDocument, pollJobStatus, deleteDocument, editDocumentData, approveDocument } from "../../api";
 
 type Document = {
   id: number;
@@ -35,7 +35,22 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
-  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'scorecard' | 'fraud'>('summary');
+  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'metrics'>('summary');
+
+  // Full document data fetched on panel open
+  const [fullDocData, setFullDocData] = useState<Record<string, unknown> | null>(null);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docLoadError, setDocLoadError] = useState<string | null>(null);
+  const docDataCache = useRef<Map<number, Record<string, unknown>>>(new Map());
+
+  // Editing key metrics
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedMetrics, setEditedMetrics] = useState<Record<string, string>>({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
+  // Tracks which metric keys were user-edited per document (persists for the session)
+  const docEditedFields = useRef<Map<number, Set<string>>>(new Map());
 
   const [searchQuery, setSearchQuery] = useState("");
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -203,6 +218,50 @@ export default function Documents() {
       showDocToast("Document deleted.");
     } catch { showDocToast("Failed to delete."); }
     finally { setDeletingId(null); }
+  };
+
+  const openDocPanel = async (doc: Document) => {
+    setSelectedDocument(doc);
+    setIsPanelExpanded(true);
+    setActiveDocTab('summary');
+    setIsEditing(false);
+    setEditedMetrics({});
+    setEditSaveError(null);
+    setFinalizeError(null);
+
+    const cached = docDataCache.current.get(doc.id);
+    if (cached) { setFullDocData(cached); setDocLoading(false); setDocLoadError(null); return; }
+
+    setDocLoading(true);
+    setDocLoadError(null);
+    setFullDocData(null);
+    try {
+      // The /api/documents/{id} endpoint only returns file metadata.
+      // Analysis data (summary, key metrics) lives in the associated report.
+      const allReports = await getReports() as Record<string, unknown>[];
+      const list = Array.isArray(allReports) ? allReports : [];
+      const docBase = doc.title.toLowerCase().replace(/\.[^/.]+$/, ''); // strip extension
+
+      // Match by document name — report titles typically include the source filename
+      const matched = list.find(r => {
+        const rName = String(r.documentName ?? r.document_name ?? r.title ?? '').toLowerCase().replace(/\.[^/.]+$/, '');
+        return rName === docBase || rName.includes(docBase) || docBase.includes(rName);
+      });
+
+      if (matched) {
+        const full = await getReport(matched.id as number) as Record<string, unknown>;
+        docDataCache.current.set(doc.id, full);
+        setFullDocData(full);
+      } else {
+        // No report found yet — cache empty so panel shows the placeholder messages
+        docDataCache.current.set(doc.id, {});
+        setFullDocData({});
+      }
+    } catch (err) {
+      setDocLoadError(err instanceof Error ? err.message : 'Failed to load document data.');
+    } finally {
+      setDocLoading(false);
+    }
   };
 
   const toggleFilter = (name: string) => setOpenFilter(prev => prev === name ? null : name);
@@ -412,7 +471,7 @@ export default function Documents() {
                           <tr
                             key={doc.id}
                             className={`cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-[#f0f9f4]" : ""} ${selectedDocument?.id === doc.id ? "bg-[#f0f9f4]" : ""}`}
-                            onClick={() => { setSelectedDocument(doc); setIsPanelExpanded(true); setActiveDocTab('summary'); }}
+                            onClick={() => openDocPanel(doc)}
                           >
                             <td className="px-4 py-4 w-10" onClick={e => e.stopPropagation()}>
                               <input
@@ -562,7 +621,7 @@ export default function Documents() {
                   </button>
                 </div>
                 <button
-                  onClick={() => { setSelectedDocument(null); setIsFullWidth(false); }}
+                  onClick={() => { setSelectedDocument(null); setIsFullWidth(false); setIsEditing(false); }}
                   className="flex items-center gap-1.5 h-[32px] px-3 rounded-lg text-[12px] text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
                 >
                   <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
@@ -573,8 +632,8 @@ export default function Documents() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-8" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {/* Document title and meta */}
+              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-24" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {/* Title + meta */}
                 <div className="mb-4">
                   <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black mb-2">
                     {selectedDocument.title}
@@ -583,7 +642,7 @@ export default function Documents() {
                     <span>Uploaded: {selectedDocument.uploadDate}</span>
                     {selectedDocument.uploadedBy && <span>· By: {selectedDocument.uploadedBy}</span>}
                   </div>
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
                       selectedDocument.status === "Approved" ? "bg-[#ecfdf3] text-[#027a48]" : "bg-[#e8f0fe] text-[#1a56db]"
                     }`}>
@@ -608,7 +667,7 @@ export default function Documents() {
                 {/* Tabs */}
                 <div className="border-b border-[#eaecf0] mb-4">
                   <div className="flex gap-1">
-                    {([['summary', 'Summary'], ['scorecard', 'Scorecard'], ['fraud', 'Fraud Score']] as const).map(([tab, label]) => (
+                    {([['summary', 'Summary'], ['metrics', 'Key Metrics']] as const).map(([tab, label]) => (
                       <button
                         key={tab}
                         onClick={() => setActiveDocTab(tab)}
@@ -620,44 +679,206 @@ export default function Documents() {
                   </div>
                 </div>
 
+                {/* Loading */}
+                {docLoading && (
+                  <div className="flex items-center gap-2 py-4">
+                    <div className="size-4 rounded-full border-2 border-[#144430] border-t-transparent animate-spin shrink-0" />
+                    <p className="text-[13px] text-[#667085]">Loading document data…</p>
+                  </div>
+                )}
+                {docLoadError && !docLoading && (
+                  <div className="px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] mb-4">
+                    <p className="text-[12px] text-[#b42318]">{docLoadError}</p>
+                  </div>
+                )}
+
                 {/* Summary tab */}
-                {activeDocTab === 'summary' && (
-                  <div className="flex flex-col gap-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: "Document Type", value: selectedDocument.type },
-                        { label: "Upload Date", value: selectedDocument.uploadDate },
-                        { label: "Uploaded By", value: selectedDocument.uploadedBy },
-                        { label: "Status", value: selectedDocument.status },
-                        { label: "Approval Date", value: selectedDocument.approvalDate },
-                        { label: "AI Confidence", value: selectedDocument.aiConfidence },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-3">
-                          <div className="text-[10px] text-[#667085] uppercase tracking-wider mb-1">{label}</div>
-                          <div className="text-[13px] font-semibold text-black">{value || "—"}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-4">
-                      <p className="text-[12px] text-[#667085] italic">Document summary will appear here after analysis is complete.</p>
-                    </div>
+                {activeDocTab === 'summary' && !docLoading && (
+                  <div className="flex flex-col gap-3">
+                    {(() => {
+                      const raw = String(
+                        fullDocData?.summary ??
+                        fullDocData?.executiveSummary ??
+                        fullDocData?.executive_summary ??
+                        fullDocData?.documentSummary ??
+                        ''
+                      ).trim();
+                      if (!raw) return (
+                        <p className="text-[13px] text-[#667085] italic">
+                          {docLoadError ? '' : 'No summary available for this document yet.'}
+                        </p>
+                      );
+                      return raw.split(/\n\n+/).filter(Boolean).slice(0, 3).map((para, i) => (
+                        <p key={i} className="text-[13px] text-[#475467] leading-[22px]">{para}</p>
+                      ));
+                    })()}
                   </div>
                 )}
 
-                {/* Scorecard tab */}
-                {activeDocTab === 'scorecard' && (
-                  <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-4">
-                    <p className="text-[13px] text-[#667085] italic">Scorecard analysis will be available here.</p>
-                  </div>
-                )}
-
-                {/* Fraud Score tab */}
-                {activeDocTab === 'fraud' && (
-                  <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-4">
-                    <p className="text-[13px] text-[#667085] italic">Fraud risk analysis will be available here.</p>
+                {/* Key Metrics tab */}
+                {activeDocTab === 'metrics' && !docLoading && (
+                  <div className="flex flex-col gap-3">
+                    {editSaveError && (
+                      <div className="px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px]">
+                        <p className="text-[12px] text-[#b42318]">{editSaveError}</p>
+                      </div>
+                    )}
+                    {(() => {
+                      const raw = (fullDocData?.keyMetrics ?? fullDocData?.extractedMetrics ?? {}) as Record<string, unknown>;
+                      const entries = Object.entries(raw);
+                      if (entries.length === 0) return (
+                        <p className="text-[13px] text-[#667085] italic">No key metrics extracted from this document.</p>
+                      );
+                      return entries.map(([key, val]) => {
+                        let value: string;
+                        let page: string | number | undefined;
+                        if (val && typeof val === 'object' && !Array.isArray(val)) {
+                          const obj = val as Record<string, unknown>;
+                          value = String(obj.value ?? obj.val ?? '—');
+                          page = obj.page as string | number | undefined;
+                        } else {
+                          value = String(val ?? '—');
+                        }
+                        const wasEdited = docEditedFields.current.get(selectedDocument.id)?.has(key) ?? false;
+                        const displayValue = isEditing ? (editedMetrics[key] ?? value) : value;
+                        return (
+                          <div key={key} className="border border-[#eaecf0] rounded-[8px] p-3">
+                            <div className="flex justify-between items-start mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] text-[#667085] uppercase tracking-wider">{key.replace(/_/g, ' ')}</span>
+                                {wasEdited && (
+                                  <span className="text-[9px] bg-[#fef0c7] text-[#dc6803] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">Edited</span>
+                                )}
+                              </div>
+                              {page != null && (
+                                <span className="text-[10px] text-[#98a2b3]">p. {page}</span>
+                              )}
+                            </div>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={displayValue}
+                                onChange={e => setEditedMetrics(prev => ({ ...prev, [key]: e.target.value }))}
+                                className="w-full px-2 py-1.5 border border-[#144430] rounded-[6px] text-[14px] font-semibold text-black focus:outline-none focus:ring-1 focus:ring-[#144430]"
+                              />
+                            ) : (
+                              <div className="text-[15px] font-semibold text-black">{displayValue}</div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 )}
               </div>
+
+              {/* Footer — hidden for approved documents */}
+              {selectedDocument.status !== "Approved" && (
+                <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white border-t-2 border-[#eaecf0]">
+                  {finalizeError && (
+                    <div className="mb-3 px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] flex items-start gap-2">
+                      <svg className="size-4 text-[#b42318] shrink-0 mt-0.5" fill="none" viewBox="0 0 16 16"><path d="M8 5v4M8 11h.01M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                      <p className="text-[11px] text-[#b42318] flex-1">{finalizeError}</p>
+                      <button onClick={() => setFinalizeError(null)} className="text-[#b42318] shrink-0"><svg className="size-3" fill="none" viewBox="0 0 12 12"><path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg></button>
+                    </div>
+                  )}
+                  <div className="flex gap-4 justify-center items-center">
+                    {/* Edit / Save */}
+                    <button
+                      disabled={editSaving}
+                      onClick={async () => {
+                        if (isEditing) {
+                          const raw = (fullDocData?.keyMetrics ?? fullDocData?.extractedMetrics ?? {}) as Record<string, unknown>;
+                          const changed = new Set<string>();
+                          Object.entries(raw).forEach(([key, val]) => {
+                            const orig = val && typeof val === 'object' && !Array.isArray(val)
+                              ? String((val as Record<string, unknown>).value ?? (val as Record<string, unknown>).val ?? '')
+                              : String(val ?? '');
+                            if (editedMetrics[key] !== undefined && editedMetrics[key] !== orig) changed.add(key);
+                          });
+                          if (changed.size === 0) { setIsEditing(false); return; }
+                          setEditSaving(true);
+                          setEditSaveError(null);
+                          try {
+                            const updatedMetrics: Record<string, unknown> = {};
+                            Object.entries(raw).forEach(([key, val]) => {
+                              const newVal = editedMetrics[key] !== undefined ? editedMetrics[key] : val;
+                              if (val && typeof val === 'object' && !Array.isArray(val)) {
+                                updatedMetrics[key] = { ...(val as Record<string, unknown>), value: newVal };
+                              } else {
+                                updatedMetrics[key] = newVal;
+                              }
+                            });
+                            await editDocumentData(selectedDocument.id, { keyMetrics: updatedMetrics });
+                            const updated = { ...(fullDocData ?? {}), keyMetrics: updatedMetrics };
+                            docDataCache.current.set(selectedDocument.id, updated);
+                            setFullDocData(updated);
+                            const existing = docEditedFields.current.get(selectedDocument.id) ?? new Set<string>();
+                            changed.forEach(k => existing.add(k));
+                            docEditedFields.current.set(selectedDocument.id, existing);
+                            setIsEditing(false);
+                          } catch (err) {
+                            setEditSaveError(err instanceof Error ? err.message : 'Failed to save changes.');
+                          } finally {
+                            setEditSaving(false);
+                          }
+                        } else {
+                          const raw = (fullDocData?.keyMetrics ?? fullDocData?.extractedMetrics ?? {}) as Record<string, unknown>;
+                          const initial: Record<string, string> = {};
+                          Object.entries(raw).forEach(([key, val]) => {
+                            initial[key] = val && typeof val === 'object' && !Array.isArray(val)
+                              ? String((val as Record<string, unknown>).value ?? (val as Record<string, unknown>).val ?? '')
+                              : String(val ?? '');
+                          });
+                          setEditedMetrics(initial);
+                          setEditSaveError(null);
+                          setIsEditing(true);
+                        }
+                      }}
+                      className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isEditing ? (
+                        <>
+                          <svg className="size-5" viewBox="0 0 20 20" fill="none">
+                            <path d="M15.833 17.5H4.167A1.667 1.667 0 0 1 2.5 15.833V4.167A1.667 1.667 0 0 1 4.167 2.5h9.166L17.5 6.667v9.166A1.667 1.667 0 0 1 15.833 17.5Z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M14.167 17.5V10.833H5.833V17.5M5.833 2.5v4.167h6.667" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">{editSaving ? 'Saving…' : 'Save'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="size-6" viewBox="0 0 24 24" fill="none">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
+                        </>
+                      )}
+                    </button>
+                    {/* Approve */}
+                    <button
+                      onClick={async () => {
+                        setFinalizeError(null);
+                        try {
+                          await approveDocument(selectedDocument.id);
+                          setDocuments(prev => prev.map(d => d.id === selectedDocument.id ? { ...d, status: 'Approved' as const } : d));
+                          setSelectedDocument(prev => prev ? { ...prev, status: 'Approved' as Document['status'] } : prev);
+                        } catch (err) {
+                          setFinalizeError(err instanceof Error ? err.message : 'Failed to approve document. Please try again.');
+                        }
+                      }}
+                      className="h-[53px] px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2 hover:bg-[#0f3324] transition-colors"
+                    >
+                      <div className="flex items-center justify-center size-6">
+                        <svg className="size-4" viewBox="0 0 20 15" fill="none">
+                          <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4"/>
+                        </svg>
+                      </div>
+                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white">Approve Document</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
