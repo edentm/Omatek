@@ -1060,19 +1060,19 @@ export default function Documents() {
                     >
                       {isEditing ? (
                         <>
-                          <svg className="size-5" viewBox="0 0 20 20" fill="none">
+                          <svg className="size-4" viewBox="0 0 20 20" fill="none">
                             <path d="M15.833 17.5H4.167A1.667 1.667 0 0 1 2.5 15.833V4.167A1.667 1.667 0 0 1 4.167 2.5h9.166L17.5 6.667v9.166A1.667 1.667 0 0 1 15.833 17.5Z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M14.167 17.5V10.833H5.833V17.5M5.833 2.5v4.167h6.667" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">{editSaving ? 'Saving…' : 'Save'}</span>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-black">{editSaving ? 'Saving…' : 'Save'}</span>
                         </>
                       ) : (
                         <>
-                          <svg className="size-6" viewBox="0 0 24 24" fill="none">
+                          <svg className="size-4" viewBox="0 0 24 24" fill="none">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-black">Edit</span>
                         </>
                       )}
                     </button>
@@ -1090,12 +1090,10 @@ export default function Documents() {
                       }}
                       className="h-10 px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2 hover:bg-[#0f3324] transition-colors"
                     >
-                      <div className="flex items-center justify-center size-6">
-                        <svg className="size-4" viewBox="0 0 20 15" fill="none">
-                          <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4"/>
-                        </svg>
-                      </div>
-                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white">Approve Document</span>
+                      <svg className="size-4" viewBox="0 0 20 15" fill="none">
+                        <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4"/>
+                      </svg>
+                      <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-white">Approve Document</span>
                     </button>
                   </div>
                 </div>

@@ -610,18 +610,18 @@ export default function Reports() {
                     >
                       {isEditing ? (
                         <>
-                          <svg className="size-5" viewBox="0 0 20 20" fill="none">
+                          <svg className="size-4" viewBox="0 0 20 20" fill="none">
                             <path d="M15.833 17.5H4.167A1.667 1.667 0 0 1 2.5 15.833V4.167A1.667 1.667 0 0 1 4.167 2.5h9.166L17.5 6.667v9.166A1.667 1.667 0 0 1 15.833 17.5Z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M14.167 17.5V10.833H5.833V17.5M5.833 2.5v4.167h6.667" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Save</span>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-black">Save</span>
                         </>
                       ) : (
                         <>
-                          <svg className="size-6" viewBox="0 0 24 24" fill="none">
+                          <svg className="size-4" viewBox="0 0 24 24" fill="none">
                             <path clipRule="evenodd" d={svgPaths.p3d4e8980} fill="#667085" fillRule="evenodd" />
                           </svg>
-                          <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-black">Edit</span>
+                          <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-black">Edit</span>
                         </>
                       )}
                     </button>
@@ -647,12 +647,10 @@ export default function Reports() {
                       }}
                       className="h-10 px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2"
                     >
-                      <div className="flex items-center justify-center size-6">
-                        <svg className="size-4" viewBox="0 0 20 15" fill="none">
-                          <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-                        </svg>
-                      </div>
-                      <span className="font-['Figtree:Bold',sans-serif] text-[16px] text-white text-center">Finalize Report</span>
+                      <svg className="size-4" viewBox="0 0 20 15" fill="none">
+                        <path d="M18 2L7 13L2 8" stroke="#EAECF0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+                      </svg>
+                      <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-white">Finalize Report</span>
                     </button>
                   </div>
                 </div>
