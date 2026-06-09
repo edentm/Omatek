@@ -367,7 +367,7 @@ export default function ChatBotWidget() {
                   }
                   return (
                     <div key={i} className="flex justify-start">
-                      <div className="bg-[#f2f4f7] text-[#1d2939] px-3.5 py-2.5 rounded-[14px] rounded-tl-[4px] text-[13px] leading-[22px] max-w-[320px] whitespace-pre-wrap">
+                      <div className="bg-white border border-[#eaecf0] text-[#1d2939] px-3.5 py-2.5 rounded-[14px] rounded-tl-[4px] text-[13px] leading-[22px] max-w-[320px] whitespace-pre-wrap">
                         {msg.text}
                       </div>
                     </div>
