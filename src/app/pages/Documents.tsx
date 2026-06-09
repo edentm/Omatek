@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useChatPanel } from "../../contexts/ChatPanelContext";
 import FilterButton from "../components/FilterButton";
+import { Tooltip } from "../components/Tooltip";
 import { getDocuments, getReports, getReport, uploadDocument, openDocument, pollJobStatus, deleteDocument, editDocumentData, approveDocument, multiAnalyze } from "../../api";
 
 type Document = {
@@ -339,10 +340,10 @@ export default function Documents() {
       <div className="flex justify-between items-start mb-6">
         <div className="flex flex-col gap-[8px]">
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
-            AI Document Analysis
+            Documents
           </h1>
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">
-            View and search for uploaded documents
+            Upload, analyze and compare documents related to Omatek's financial status.
           </p>
         </div>
 
@@ -637,34 +638,36 @@ export default function Documents() {
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="border-b border-[#eaecf0] px-6 py-3 flex items-center justify-between">
-                <button
-                  onClick={() => setIsFullWidth(!isFullWidth)}
-                  title={isFullWidth ? "Collapse panel" : "Expand panel"}
-                  className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
-                >
-                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
-                    {isFullWidth ? (
-                      <>
-                        <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                        <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
-                      </>
-                    ) : (
-                      <>
-                        <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                        <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
-                      </>
-                    )}
-                  </svg>
-                </button>
-                <button
-                  onClick={() => { setSelectedDocument(null); setIsFullWidth(false); setIsEditing(false); }}
-                  title="Close"
-                  className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
-                >
-                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
-                    <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
+                <Tooltip label={isFullWidth ? "Collapse panel" : "Expand panel"} position="bottom">
+                  <button
+                    onClick={() => setIsFullWidth(!isFullWidth)}
+                    className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                      {isFullWidth ? (
+                        <>
+                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
+                        </>
+                      ) : (
+                        <>
+                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                        </>
+                      )}
+                    </svg>
+                  </button>
+                </Tooltip>
+                <Tooltip label="Close panel" position="bottom">
+                  <button
+                    onClick={() => { setSelectedDocument(null); setIsFullWidth(false); setIsEditing(false); }}
+                    className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                      <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </Tooltip>
               </div>
 
               {/* Content */}
@@ -1120,34 +1123,36 @@ export default function Documents() {
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="border-b border-[#eaecf0] px-6 py-3 flex items-center justify-between">
-              <button
-                onClick={() => setCompareIsFullWidth(!compareIsFullWidth)}
-                title={compareIsFullWidth ? "Collapse panel" : "Expand panel"}
-                className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
-              >
-                <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
-                  {compareIsFullWidth ? (
-                    <>
-                      <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                      <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
-                    </>
-                  ) : (
-                    <>
-                      <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                      <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
-                    </>
-                  )}
-                </svg>
-              </button>
-              <button
-                onClick={() => { setShowComparePanel(false); setCompareIsFullWidth(false); }}
-                title="Close"
-                className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
-              >
-                <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
-                  <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              <Tooltip label={compareIsFullWidth ? "Collapse panel" : "Expand panel"} position="bottom">
+                <button
+                  onClick={() => setCompareIsFullWidth(!compareIsFullWidth)}
+                  className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                >
+                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                    {compareIsFullWidth ? (
+                      <>
+                        <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                        <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
+                      </>
+                    ) : (
+                      <>
+                        <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                        <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                      </>
+                    )}
+                  </svg>
+                </button>
+              </Tooltip>
+              <Tooltip label="Close panel" position="bottom">
+                <button
+                  onClick={() => { setShowComparePanel(false); setCompareIsFullWidth(false); }}
+                  className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                >
+                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                    <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </Tooltip>
             </div>
 
             {/* Content */}

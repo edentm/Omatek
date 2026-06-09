@@ -108,7 +108,7 @@ export default function Dashboard() {
             Welcome, {firstName}
           </h1>
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-[#475467]">
-            Financial overview across all finalized reports.
+            View Omatek's latest trends.
           </p>
         </div>
 

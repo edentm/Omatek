@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9";
 import FilterButton from "../components/FilterButton";
+import { Tooltip } from "../components/Tooltip";
 import { getReports, getReport, editReport, finalizeReport, exportReportPresentation, fetchReportPresentationHTML, generateCustomReport, getDocuments } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 import { useChatPanel } from "../../contexts/ChatPanelContext";
@@ -271,7 +272,7 @@ export default function Reports() {
             Reports
           </h1>
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">
-            Instructions on report viewing and generation
+            Generate reports from uploaded documents and cater their focus
           </p>
         </div>
 
@@ -485,46 +486,49 @@ export default function Reports() {
               {/* Header */}
               <div className="border-b border-[#eaecf0] px-6 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setIsFullWidth(!isFullWidth)}
-                    title={isFullWidth ? "Collapse panel" : "Expand panel"}
-                    className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
-                  >
-                    <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
-                      {isFullWidth ? (
-                        <>
-                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
-                        </>
-                      ) : (
-                        <>
-                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
-                        </>
-                      )}
-                    </svg>
-                  </button>
-                  {selectedReport.apiId > 0 && (
+                  <Tooltip label={isFullWidth ? "Collapse panel" : "Expand panel"} position="bottom">
                     <button
-                      onClick={openExportModal}
-                      title="Download as PDF"
+                      onClick={() => setIsFullWidth(!isFullWidth)}
                       className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
                     >
                       <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
-                        <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5M5.83333 8.33333L10 12.5M10 12.5L14.1667 8.33333M10 12.5V2.5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                        {isFullWidth ? (
+                          <>
+                            <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                            <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
+                          </>
+                        ) : (
+                          <>
+                            <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                            <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                          </>
+                        )}
                       </svg>
                     </button>
+                  </Tooltip>
+                  {selectedReport.apiId > 0 && (
+                    <Tooltip label="Download as PDF" position="bottom">
+                      <button
+                        onClick={openExportModal}
+                        className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                      >
+                        <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                          <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5M5.83333 8.33333L10 12.5M10 12.5L14.1667 8.33333M10 12.5V2.5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </Tooltip>
                   )}
                 </div>
-                <button
-                  onClick={() => { setSelectedReport(null); setIsFullWidth(false); setIsEditing(false); }}
-                  title="Close"
-                  className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
-                >
-                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
-                    <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
+                <Tooltip label="Close panel" position="bottom">
+                  <button
+                    onClick={() => { setSelectedReport(null); setIsFullWidth(false); setIsEditing(false); }}
+                    className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                      <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </Tooltip>
               </div>
 
               {/* Content */}

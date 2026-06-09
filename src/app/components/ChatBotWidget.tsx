@@ -1,18 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { askPlatform, getChatHistory } from "../../api";
+import { askPlatform, getChatHistory, getDocuments } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
 import { useChatPanel } from "../../contexts/ChatPanelContext";
 import chatbotIcon from "../../assets/chatbot.svg";
+import { Tooltip } from "./Tooltip";
 
 type Message = { role: "user" | "assistant"; text: string; tokensUsed?: number };
 type HistoryItem = { id: number; sessionId: string | null; question: string; answer: string | null; tokensUsed: number | null; createdAt: string };
 type Session = { sessionId: string | null; title: string; date: string; items: HistoryItem[] };
+type DocOption = { id: number; title: string };
 
 const GREETING = "How can I help you today?";
 const DEFAULT_TITLE = "New AI Chat";
 
 export default function ChatBotWidget() {
-  const { isExhausted, deductTokens } = useTokenLedger();
+  const { isExhausted, deductTokens, balance, totalBudget } = useTokenLedger();
   const { chatOpen: isOpen, setChatOpen: setIsOpen, sidePanelOpen } = useChatPanel();
   const [messages, setMessages] = useState<Message[]>([{ role: "assistant", text: GREETING }]);
   const [input, setInput] = useState("");
@@ -25,10 +27,14 @@ export default function ChatBotWidget() {
   const [showOptions, setShowOptions] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [showDocPicker, setShowDocPicker] = useState(false);
+  const [docOptions, setDocOptions] = useState<DocOption[]>([]);
+  const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const optionsRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const docPickerRef = useRef<HTMLDivElement>(null);
 
   const isDefaultTitle = chatTitle === DEFAULT_TITLE;
 
@@ -64,6 +70,35 @@ export default function ChatBotWidget() {
       renameInputRef.current.select();
     }
   }, [isRenaming]);
+
+  useEffect(() => {
+    if (!showDocPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (docPickerRef.current && !docPickerRef.current.contains(e.target as Node)) {
+        setShowDocPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDocPicker]);
+
+  const openDocPicker = async () => {
+    if (showDocPicker) { setShowDocPicker(false); return; }
+    if (docOptions.length === 0) {
+      try {
+        const data = await getDocuments({ limit: 100 }) as Record<string, unknown>[];
+        const list = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+        setDocOptions(list.map(d => ({ id: Number(d.id), title: String(d.originalFilename ?? d.filename ?? d.title ?? `Document #${d.id}`) })));
+      } catch {
+        setDocOptions([]);
+      }
+    }
+    setShowDocPicker(true);
+  };
+
+  const toggleDoc = (id: number) => setSelectedDocIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleAllDocs = () => setSelectedDocIds(selectedDocIds.length === docOptions.length ? [] : docOptions.map(d => d.id));
+  const allDocsSelected = docOptions.length > 0 && selectedDocIds.length === docOptions.length;
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -141,7 +176,7 @@ export default function ChatBotWidget() {
     }
     setLoading(true);
     try {
-      const res = await askPlatform(text, [], sessionId) as Record<string, unknown>;
+      const res = await askPlatform(text, selectedDocIds, sessionId) as Record<string, unknown>;
       const answer = (res.answer ?? res.response ?? res.message ?? JSON.stringify(res)) as string;
       const rawTokens = res.tokensUsed ?? res.tokens_used;
       const tokensUsed = rawTokens != null ? Number(rawTokens) : undefined;
@@ -258,42 +293,43 @@ export default function ChatBotWidget() {
             {/* Right: new chat + download + 3-dots + hide */}
             <div className="flex items-center gap-0.5 shrink-0">
 
-              {/* New chat (compose icon) */}
-              <button
-                onClick={startNewChat}
-                title="New chat"
-                className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
-              >
-                <svg className="size-4" fill="none" viewBox="0 0 20 20">
-                  <path d="M10 4H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M14.5 2.5a1.414 1.414 0 0 1 2 2L10 11l-3 1 1-3 6.5-6.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              <Tooltip label="New chat" position="bottom">
+                <button
+                  onClick={startNewChat}
+                  className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                    <path d="M10 4H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M14.5 2.5a1.414 1.414 0 0 1 2 2L10 11l-3 1 1-3 6.5-6.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </Tooltip>
 
-              {/* Download */}
-              <button
-                onClick={downloadChat}
-                title="Download chat"
-                className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
-              >
-                <svg className="size-4" fill="none" viewBox="0 0 20 20">
-                  <path d="M17.5 12.5v3.333A1.667 1.667 0 0 1 15.833 17.5H4.167A1.667 1.667 0 0 1 2.5 15.833V12.5M5.833 8.333 10 12.5l4.167-4.167M10 12.5v-10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              <Tooltip label="Download chat" position="bottom">
+                <button
+                  onClick={downloadChat}
+                  className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                    <path d="M17.5 12.5v3.333A1.667 1.667 0 0 1 15.833 17.5H4.167A1.667 1.667 0 0 1 2.5 15.833V12.5M5.833 8.333 10 12.5l4.167-4.167M10 12.5v-10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </Tooltip>
 
               {/* 3-dots options menu */}
               <div className="relative" ref={optionsRef}>
-                <button
-                  onClick={() => setShowOptions(o => !o)}
-                  title="More options"
-                  className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
-                >
-                  <svg className="size-4" fill="currentColor" viewBox="0 0 20 20">
-                    <circle cx="4" cy="10" r="1.5"/>
-                    <circle cx="10" cy="10" r="1.5"/>
-                    <circle cx="16" cy="10" r="1.5"/>
-                  </svg>
-                </button>
+                <Tooltip label="Options" position="bottom">
+                  <button
+                    onClick={() => setShowOptions(o => !o)}
+                    className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
+                  >
+                    <svg className="size-4" fill="currentColor" viewBox="0 0 20 20">
+                      <circle cx="4" cy="10" r="1.5"/>
+                      <circle cx="10" cy="10" r="1.5"/>
+                      <circle cx="16" cy="10" r="1.5"/>
+                    </svg>
+                  </button>
+                </Tooltip>
 
                 {showOptions && (
                   <div className="absolute top-[36px] right-0 z-50 bg-white border border-[#d0d5dd] rounded-[10px] shadow-xl w-[160px] overflow-hidden py-1">
@@ -319,16 +355,16 @@ export default function ChatBotWidget() {
                 )}
               </div>
 
-              {/* Hide chat */}
-              <button
-                onClick={() => setIsOpen(false)}
-                title="Hide chat"
-                className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
-              >
-                <svg className="size-4" fill="none" viewBox="0 0 20 20">
-                  <path d="M11 5l5 5-5 5M4 5l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              <Tooltip label="Hide chat" position="bottom">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="size-8 flex items-center justify-center rounded-lg text-[#667085] hover:text-black hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="size-4" fill="none" viewBox="0 0 20 20">
+                    <path d="M11 5l5 5-5 5M4 5l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </Tooltip>
             </div>
           </div>
 
@@ -375,30 +411,138 @@ export default function ChatBotWidget() {
           </div>
 
           {/* Input */}
-          <div className="px-4 py-3 border-t border-[#eaecf0] shrink-0">
-            {isExhausted && (
-              <p className="text-[11px] text-[#b42318] mb-2">API balance exhausted — recharge required.</p>
+          <div className="px-4 pb-4 pt-0 shrink-0 flex flex-col gap-2">
+
+            {/* Token balance — no border, sits above the bordered textarea */}
+            {isExhausted ? (
+              <div className="flex items-center gap-2.5 bg-[#1d2939] rounded-[12px] px-3 py-2.5">
+                <div className="shrink-0 size-[18px] rounded-full bg-[#344054] flex items-center justify-center">
+                  <svg className="size-3 text-white" fill="none" viewBox="0 0 12 12">
+                    <path d="M6 1.5A4.5 4.5 0 1 0 10.5 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    <path d="M10.5 2v4h-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <p className="text-[12px] text-[#d0d5dd] leading-[18px]">
+                  You've run out of API balance.{" "}
+                  <span className="text-[#7dd3fc] font-medium">Contact your admin.</span>
+                </p>
+              </div>
+            ) : (
+              <div className="bg-[#f2f4f7] rounded-[12px] px-3 pt-2.5 pb-2.5">
+                <p className="text-[12px] text-[#344054] font-medium mb-1.5">
+                  {balance.toLocaleString()} tokens left
+                </p>
+                <div className="h-[4px] rounded-full bg-[#e4e7ec] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#144430] transition-all duration-500"
+                    style={{ width: `${totalBudget > 0 ? Math.max(2, (balance / totalBudget) * 100) : 100}%` }}
+                  />
+                </div>
+              </div>
             )}
-            <div className="flex gap-2 items-end">
+
+            {/* Bordered textarea card */}
+            <div className="border border-[#d0d5dd] rounded-[12px] bg-white relative">
+              {/* Selected docs chips */}
+              {selectedDocIds.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap px-3 pt-2.5">
+                  {selectedDocIds.length === 1 ? (
+                    <div className="inline-flex items-center gap-1.5 bg-[#f0f9f4] border border-[#a9efc5] rounded-full px-2.5 py-1">
+                      <svg className="size-3 text-[#027a48] shrink-0" fill="none" viewBox="0 0 14 14">
+                        <path d="M8 1H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5L8 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8 1v4h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span className="text-[11px] text-[#027a48] font-medium truncate max-w-[220px]">
+                        {docOptions.find(d => d.id === selectedDocIds[0])?.title ?? "1 document"}
+                      </span>
+                      <button onClick={() => setSelectedDocIds([])} className="text-[#667085] hover:text-[#b42318] ml-0.5 shrink-0">
+                        <svg className="size-3" fill="none" viewBox="0 0 12 12"><path d="M9 3 3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 bg-[#f0f9f4] border border-[#a9efc5] rounded-full px-2.5 py-1">
+                      <svg className="size-3 text-[#027a48] shrink-0" fill="none" viewBox="0 0 14 14">
+                        <path d="M8 1H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5L8 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8 1v4h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span className="text-[11px] text-[#027a48] font-medium">{selectedDocIds.length} documents selected</span>
+                      <button onClick={() => setSelectedDocIds([])} className="text-[#667085] hover:text-[#b42318] ml-0.5 shrink-0">
+                        <svg className="size-3" fill="none" viewBox="0 0 12 12"><path d="M9 3 3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 placeholder={isExhausted ? "API balance exhausted" : "Ask anything…"}
-                rows={1}
                 disabled={isExhausted}
-                className="flex-1 px-3 py-2.5 border border-[#d0d5dd] rounded-[10px] text-[13px] text-[#344054] resize-none focus:outline-none focus:border-[#667085] placeholder:text-[#98a2b3] disabled:bg-[#f9fafb] disabled:cursor-not-allowed leading-[20px]"
-                style={{ minHeight: "40px", maxHeight: "120px" }}
+                className="w-full px-3 pt-2.5 resize-none focus:outline-none text-[13px] text-[#344054] placeholder:text-[#98a2b3] disabled:bg-[#f9fafb] disabled:cursor-not-allowed leading-[20px] bg-transparent"
+                style={{ minHeight: "80px", maxHeight: "180px", paddingBottom: "44px" }}
               />
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim() || loading || isExhausted}
-                className="h-10 w-10 bg-[#144430] rounded-[10px] flex items-center justify-center hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-              >
-                <svg className="size-4" viewBox="0 0 20 20" fill="none">
-                  <path d="M17.5 10L2.5 2.5L6.25 10L2.5 17.5L17.5 10Z" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+
+              {/* Bottom row: doc picker + send */}
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 pb-2">
+                {/* Doc picker */}
+                <div className="relative" ref={docPickerRef}>
+                  <button
+                    onClick={openDocPicker}
+                    title="Select source documents"
+                    className={`size-8 flex items-center justify-center rounded-lg transition-colors text-[18px] font-light leading-none ${selectedDocIds.length > 0 ? "text-[#144430] bg-[#f0f9f4]" : "text-[#667085] hover:text-black hover:bg-gray-100"}`}
+                  >
+                    +
+                  </button>
+
+                  {showDocPicker && (
+                    <div className="absolute bottom-full mb-2 left-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl w-[300px] overflow-hidden">
+                      <div className="border-b border-[#eaecf0]">
+                        <button onClick={toggleAllDocs} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left">
+                          <div className={`size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${allDocsSelected ? "bg-[#144430] border-[#144430]" : selectedDocIds.length > 0 ? "border-[#144430]" : "border-[#d0d5dd]"}`}>
+                            {allDocsSelected && <svg className="size-2.5" viewBox="0 0 10 10" fill="none"><path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            {!allDocsSelected && selectedDocIds.length > 0 && <div className="w-2 h-0.5 bg-[#144430] rounded" />}
+                          </div>
+                          <span className="text-[13px] font-semibold text-[#344054]">{allDocsSelected ? "Deselect all" : "Select all documents"}</span>
+                          <span className="ml-auto text-[11px] text-[#98a2b3]">{docOptions.length} total</span>
+                        </button>
+                      </div>
+                      <div className="max-h-[240px] overflow-y-auto py-1">
+                        {docOptions.length === 0 && (
+                          <p className="text-[12px] text-[#98a2b3] px-4 py-3">No documents found.</p>
+                        )}
+                        {docOptions.map(doc => {
+                          const checked = selectedDocIds.includes(doc.id);
+                          return (
+                            <button key={doc.id} onClick={() => toggleDoc(doc.id)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left">
+                              <div className={`size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[#144430] border-[#144430]" : "border-[#d0d5dd]"}`}>
+                                {checked && <svg className="size-2.5" viewBox="0 0 10 10" fill="none"><path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                              </div>
+                              <span className="text-[13px] text-[#344054] truncate flex-1">{doc.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="border-t border-[#eaecf0] px-4 py-2.5 flex justify-between items-center bg-gray-50">
+                        <span className="text-[12px] text-[#667085]">{selectedDocIds.length === 0 ? "No documents selected" : `${selectedDocIds.length} selected`}</span>
+                        <button onClick={() => setShowDocPicker(false)} className="text-[12px] font-semibold text-[#144430] hover:underline">Done</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Send button */}
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || loading || isExhausted}
+                  className="size-8 bg-[#144430] rounded-[8px] flex items-center justify-center hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                >
+                  <svg className="size-4" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 16.667V3.333M4 9.333 10 3.333l6 6" stroke="#EAECF0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>

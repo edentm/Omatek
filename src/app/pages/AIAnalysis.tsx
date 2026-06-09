@@ -51,10 +51,10 @@ export default function AIAnalysis() {
       <div className="flex justify-between items-start mb-6 gap-4">
         <div className="flex flex-col gap-[4px]">
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
-            Metrics Summary
+            Metrics 
           </h1>
           <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-[#475467]">
-            Upload and analyze documents, flag issues
+            View different categories of metrics related to Omatek's financial health.
           </p>
         </div>
 
