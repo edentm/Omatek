@@ -589,45 +589,33 @@ export default function Documents() {
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="border-b border-[#eaecf0] px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsFullWidth(!isFullWidth)}
-                    title={isFullWidth ? "Collapse panel" : "Expand panel"}
-                    className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
-                  >
-                    <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
-                      {isFullWidth ? (
-                        <>
-                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
-                        </>
-                      ) : (
-                        <>
-                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
-                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
-                        </>
-                      )}
-                    </svg>
-                    {isFullWidth ? "Collapse" : "Expand"}
-                  </button>
-                  <button
-                    onClick={() => openDocument(selectedDocument.id)}
-                    className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
-                  >
-                    <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
-                      <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Open Document
-                  </button>
-                </div>
+                <button
+                  onClick={() => setIsFullWidth(!isFullWidth)}
+                  title={isFullWidth ? "Collapse panel" : "Expand panel"}
+                  className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                >
+                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                    {isFullWidth ? (
+                      <>
+                        <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                        <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
+                      </>
+                    ) : (
+                      <>
+                        <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                        <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                      </>
+                    )}
+                  </svg>
+                </button>
                 <button
                   onClick={() => { setSelectedDocument(null); setIsFullWidth(false); setIsEditing(false); }}
-                  className="flex items-center gap-1.5 h-[32px] px-3 rounded-lg text-[12px] text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                  title="Close"
+                  className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
                 >
-                  <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
+                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
                     <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  Close
                 </button>
               </div>
 
@@ -653,6 +641,15 @@ export default function Documents() {
                         {selectedDocument.type}
                       </span>
                     )}
+                    <button
+                      onClick={() => openDocument(selectedDocument.id)}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[12px] bg-[#f2f4f7] text-[#344054] border border-[#d0d5dd] hover:bg-[#e4e7ec] transition-colors"
+                    >
+                      <svg className="size-3 shrink-0" fill="none" viewBox="0 0 20 20">
+                        <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Open Document
+                    </button>
                     {selectedDocument.aiConfidence !== "—" && (() => {
                       const p = getConfidencePill(selectedDocument.aiConfidence);
                       return (
