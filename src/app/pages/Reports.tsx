@@ -794,25 +794,31 @@ export default function Reports() {
           <div className="absolute inset-0 bg-black/40" onClick={generateStep === 'generating' ? undefined : closeGenerateModal} />
 
           {/* Modal card */}
-          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[680px] mx-4 p-8 flex flex-col gap-6">
-            {/* Header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[22px] text-black leading-tight">
-                  Generate Report
-                </h2>
-                <p className="text-[14px] text-[#667085] mt-1">
-                  AI will compile a report from your existing analysis data.
-                </p>
+          <div className="relative bg-white rounded-[16px] shadow-xl w-full max-w-[680px] mx-4 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 48px)' }}>
+
+            {/* Header — fixed */}
+            <div className="px-8 pt-8 pb-5 shrink-0">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-['Figtree:Medium',sans-serif] font-medium text-[22px] text-black leading-tight">
+                    Generate Report
+                  </h2>
+                  <p className="text-[14px] text-[#667085] mt-1">
+                    AI will compile a report from your existing analysis data.
+                  </p>
+                </div>
+                {generateStep !== 'generating' && (
+                  <button onClick={closeGenerateModal} className="text-[#667085] hover:text-black ml-4 shrink-0">
+                    <svg className="size-5" fill="none" viewBox="0 0 20 20">
+                      <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                )}
               </div>
-              {generateStep !== 'generating' && (
-                <button onClick={closeGenerateModal} className="text-[#667085] hover:text-black ml-4 shrink-0">
-                  <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                    <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              )}
             </div>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto px-8 pb-8 flex flex-col gap-6">
 
             {/* ── FORM ── */}
             {generateStep === 'form' && (
@@ -827,18 +833,22 @@ export default function Reports() {
                       )}
                     </label>
                     {availableDocuments.length > 0 && (
-                      <button
-                        onClick={() =>
-                          setSelectedDocumentIds(
-                            selectedDocumentIds.length === availableDocuments.length
-                              ? []
-                              : availableDocuments.map(d => d.id)
-                          )
-                        }
-                        className="text-[12px] text-[#144430] font-medium hover:underline"
-                      >
-                        {selectedDocumentIds.length === availableDocuments.length ? 'Deselect all' : 'Select all'}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setSelectedDocumentIds(availableDocuments.map(d => d.id))}
+                          className="text-[12px] text-[#144430] font-medium hover:underline"
+                        >
+                          Select all
+                        </button>
+                        {selectedDocumentIds.length > 0 && (
+                          <button
+                            onClick={() => setSelectedDocumentIds([])}
+                            className="text-[12px] text-[#667085] font-medium hover:underline"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -863,7 +873,7 @@ export default function Reports() {
                     {availableDocuments.length === 0 ? (
                       <p className="px-4 py-3 text-[13px] text-[#667085] italic">No documents uploaded yet.</p>
                     ) : (
-                      <div className="max-h-[180px] overflow-y-auto divide-y divide-[#f2f4f7]">
+                      <div className="max-h-[160px] overflow-y-auto divide-y divide-[#f2f4f7]">
                         {availableDocuments
                           .filter(d => !docSearchQuery || d.title.toLowerCase().includes(docSearchQuery.toLowerCase()))
                           .map(doc => {
@@ -877,7 +887,7 @@ export default function Reports() {
                                     checked ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
                                   )
                                 }
-                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${checked ? 'bg-[#f2f4f7]' : 'bg-white hover:bg-[#f9fafb]'}`}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${checked ? 'bg-[#f2f4f7]' : 'bg-white hover:bg-[#f9fafb]'}`}
                               >
                                 <div className={`size-4 rounded border flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-[#144430] border-[#144430]' : 'border-[#d0d5dd]'}`}>
                                   {checked && (
@@ -1075,7 +1085,8 @@ export default function Reports() {
                 </div>
               </>
             )}
-          </div>
+            </div>{/* end scrollable body */}
+          </div>{/* end modal card */}
         </div>
       )}
 
