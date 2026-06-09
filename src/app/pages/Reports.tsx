@@ -141,9 +141,10 @@ export default function Reports() {
   const [reportDescription, setReportDescription] = useState('');
   const [openModalFilter, setOpenModalFilter] = useState<string | null>(null);
   const [availableDocuments, setAvailableDocuments] = useState<{id: number; title: string}[]>([]);
-  const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<number[]>([]);
+  const [docSearchQuery, setDocSearchQuery] = useState('');
   const [generateError, setGenerateError] = useState('');
-  const [generatedReport, setGeneratedReport] = useState<Record<string, unknown> | null>(null);
+  const [generatedReports, setGeneratedReports] = useState<Record<string, unknown>[]>([]);
 
   useEffect(() => {
     getDocuments().then((data: unknown) => {
@@ -152,7 +153,6 @@ export default function Reports() {
         title: (d.originalFilename ?? d.filename ?? `Document #${d.id}`) as string,
       }));
       setAvailableDocuments(docs);
-      if (docs.length > 0) setSelectedDocumentId(docs[0].id);
     }).catch(() => {});
   }, []);
 
@@ -166,11 +166,13 @@ export default function Reports() {
     setReportDescription('');
     setOpenModalFilter(null);
     setGenerateError('');
-    setGeneratedReport(null);
+    setGeneratedReports([]);
+    setSelectedDocumentIds([]);
+    setDocSearchQuery('');
   };
 
   const handleGenerate = async () => {
-    if (!selectedDocumentId) return;
+    if (selectedDocumentIds.length === 0) return;
     if (isExhausted) { setGenerateError('API balance exhausted. Please recharge to use AI features.'); return; }
     setGenerateStep('generating');
     setGenerateError('');
@@ -181,24 +183,29 @@ export default function Reports() {
       if (reportTimeframeFrom || reportTimeframeTo) parts.push(`Analysis period: ${reportTimeframeFrom || 'start'} to ${reportTimeframeTo || 'present'}.`);
       if (reportDescription) parts.push(reportDescription);
       const instructions = parts.join(' ') || 'Provide a comprehensive financial audit report.';
-      const result = await generateCustomReport({
-        documentId: selectedDocumentId,
-        customInstructions: instructions,
-        startPeriod: reportTimeframeFrom || undefined,
-        endPeriod: reportTimeframeTo || undefined,
-      }) as Record<string, unknown>;
-      setGeneratedReport(result);
-      const newReport: Report = {
-        apiId: result.id as number,
-        title: (result.title ?? result.documentName ?? 'Custom Report') as string,
-        id: `FR-${String((result.id as number) ?? 0).padStart(4, '0')}`,
-        type: 'Custom Report',
-        category: 'Financial Analysis',
-        date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
-        status: 'Needs Approval',
-        aiConfidence: result.confidenceScore != null ? `${Math.round(Number(result.confidenceScore) * (Number(result.confidenceScore) <= 1 ? 100 : 1))}%` : '—',
-      };
-      setReports(prev => [newReport, ...prev]);
+
+      const results: Record<string, unknown>[] = [];
+      for (const docId of selectedDocumentIds) {
+        const result = await generateCustomReport({
+          documentId: docId,
+          customInstructions: instructions,
+          startPeriod: reportTimeframeFrom || undefined,
+          endPeriod: reportTimeframeTo || undefined,
+        }) as Record<string, unknown>;
+        results.push(result);
+        const newReport: Report = {
+          apiId: result.id as number,
+          title: (result.title ?? result.documentName ?? 'Custom Report') as string,
+          id: `FR-${String((result.id as number) ?? 0).padStart(4, '0')}`,
+          type: 'Custom Report',
+          category: 'Financial Analysis',
+          date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+          status: 'Needs Approval',
+          aiConfidence: result.confidenceScore != null ? `${Math.round(Number(result.confidenceScore) * (Number(result.confidenceScore) <= 1 ? 100 : 1))}%` : '—',
+        };
+        setReports(prev => [newReport, ...prev]);
+      }
+      setGeneratedReports(results);
       setGenerateStep('complete');
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : 'Failed to generate report');
@@ -812,17 +819,80 @@ export default function Reports() {
               <>
                 {/* Document selector */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">Document to Analyze</label>
-                  <select
-                    value={selectedDocumentId ?? ''}
-                    onChange={(e) => setSelectedDocumentId(Number(e.target.value))}
-                    className="w-full h-[36px] px-3 border border-[#d0d5dd] rounded-lg text-[14px] text-[#344054] focus:outline-none focus:border-[#667085] bg-white"
-                  >
-                    {availableDocuments.length === 0 && <option value="">No documents uploaded yet</option>}
-                    {availableDocuments.map((doc) => (
-                      <option key={doc.id} value={doc.id}>{doc.title}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[14px] font-['Figtree:Medium',sans-serif] font-medium text-black">
+                      Documents to Analyze
+                      {selectedDocumentIds.length > 0 && (
+                        <span className="ml-2 text-[12px] font-normal text-[#667085]">{selectedDocumentIds.length} selected</span>
+                      )}
+                    </label>
+                    {availableDocuments.length > 0 && (
+                      <button
+                        onClick={() =>
+                          setSelectedDocumentIds(
+                            selectedDocumentIds.length === availableDocuments.length
+                              ? []
+                              : availableDocuments.map(d => d.id)
+                          )
+                        }
+                        className="text-[12px] text-[#144430] font-medium hover:underline"
+                      >
+                        {selectedDocumentIds.length === availableDocuments.length ? 'Deselect all' : 'Select all'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search within doc list */}
+                  {availableDocuments.length > 5 && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search documents…"
+                        value={docSearchQuery}
+                        onChange={e => setDocSearchQuery(e.target.value)}
+                        className="w-full h-[36px] px-3 pl-9 border border-[#d0d5dd] rounded-lg text-[13px] focus:outline-none focus:border-[#667085]"
+                      />
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#98a2b3]" fill="none" viewBox="0 0 20 20">
+                        <path d="M17.5 17.5L13.875 13.875M15.8333 9.16667C15.8333 12.8486 12.8486 15.8333 9.16667 15.8333C5.48477 15.8333 2.5 12.8486 2.5 9.16667C2.5 5.48477 5.48477 2.5 9.16667 2.5C12.8486 2.5 15.8333 5.48477 15.8333 9.16667Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  )}
+
+                  {/* Scrollable checklist */}
+                  <div className="border border-[#d0d5dd] rounded-lg overflow-hidden">
+                    {availableDocuments.length === 0 ? (
+                      <p className="px-4 py-3 text-[13px] text-[#667085] italic">No documents uploaded yet.</p>
+                    ) : (
+                      <div className="max-h-[180px] overflow-y-auto divide-y divide-[#f2f4f7]">
+                        {availableDocuments
+                          .filter(d => !docSearchQuery || d.title.toLowerCase().includes(docSearchQuery.toLowerCase()))
+                          .map(doc => {
+                            const checked = selectedDocumentIds.includes(doc.id);
+                            return (
+                              <button
+                                key={doc.id}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedDocumentIds(prev =>
+                                    checked ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
+                                  )
+                                }
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${checked ? 'bg-[#f0f9f4]' : 'bg-white hover:bg-[#f9fafb]'}`}
+                              >
+                                <div className={`size-4 rounded border flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-[#144430] border-[#144430]' : 'border-[#d0d5dd]'}`}>
+                                  {checked && (
+                                    <svg className="size-2.5" viewBox="0 0 10 10" fill="none">
+                                      <path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  )}
+                                </div>
+                                <span className="text-[13px] text-[#344054] truncate">{doc.title}</span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {generateError && (
@@ -924,7 +994,7 @@ export default function Reports() {
                 <div className="flex justify-center">
                   <button
                     onClick={handleGenerate}
-                    disabled={!selectedDocumentId || availableDocuments.length === 0}
+                    disabled={selectedDocumentIds.length === 0}
                     className="h-[43px] px-6 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg className="size-4" fill="none" viewBox="0 0 20 20">
@@ -964,20 +1034,29 @@ export default function Reports() {
             {generateStep === 'complete' && (
               <>
                 <div className="flex items-center gap-2 text-[#027a48]">
-                  <svg className="size-4 shrink-0" viewBox="0 0 40 40" fill="none">
+                  <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="none">
                     <path d="M16.667 5L7.5 14.167 3.333 10" stroke="#027a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">Draft generated successfully! The draft has been added to your Reports list with "Needs Approval" status. Review the content to mark it as complete.</span>
+                  <span className="font-['Figtree:Medium',sans-serif] font-medium text-[14px]">
+                    {generatedReports.length === 1
+                      ? 'Draft generated successfully! It has been added to your Reports list with "Needs Approval" status.'
+                      : `${generatedReports.length} drafts generated successfully! Each has been added to your Reports list with "Needs Approval" status.`}
+                  </span>
                 </div>
 
-                <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-5 flex flex-col gap-3">
-                  <p className="font-['Figtree:Medium',sans-serif] font-medium text-[14px] text-black">Report Summary</p>
-                  <p className="text-[13px] text-[#475467] leading-[20px]">
-                    {generatedReport
-                      ? String((generatedReport.executiveSummary as string) ?? '').slice(0, 300) + ((String(generatedReport.executiveSummary ?? '').length > 300) ? '…' : '')
-                      : 'AI-generated report is ready for review.'
-                    }
-                  </p>
+                <div className="flex flex-col gap-2">
+                  {generatedReports.map((r, i) => (
+                    <div key={i} className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4 flex flex-col gap-1.5">
+                      <p className="font-['Figtree:Medium',sans-serif] font-medium text-[13px] text-black truncate">
+                        {String(r.title ?? r.documentName ?? `Report ${i + 1}`)}
+                      </p>
+                      {r.executiveSummary && (
+                        <p className="text-[12px] text-[#475467] leading-[19px] line-clamp-2">
+                          {String(r.executiveSummary).slice(0, 200)}{String(r.executiveSummary).length > 200 ? '…' : ''}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
 
                 <div className="flex justify-center">
@@ -989,7 +1068,9 @@ export default function Reports() {
                     }}
                     className="h-[43px] px-5 bg-[#144430] rounded-[10px] flex items-center gap-2 hover:bg-[#0f3324] transition-colors"
                   >
-                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">View Report</span>
+                    <span className="font-['Figtree:Bold',sans-serif] text-[14px] text-white">
+                      {generatedReports.length === 1 ? 'View Report' : 'View Reports'}
+                    </span>
                   </button>
                 </div>
               </>
