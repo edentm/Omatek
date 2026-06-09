@@ -125,7 +125,7 @@ export default function Users() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
                       onClick={() => handleToggleActive(user)}
-                      className={`text-[12px] font-medium px-3 py-1 rounded-lg border transition-colors ${user.isActive ? "border-[#fecdca] text-[#b42318] hover:bg-[#fef3f2]" : "border-[#a9efc5] text-[#027a48] hover:bg-[#ecfdf3]"}`}
+                      className={`text-[12px] font-medium px-3 py-1 rounded-lg border transition-colors ${user.isActive ? "border-[#d0d5dd] text-[#667085] hover:bg-[#f9fafb]" : "border-[#a9efc5] text-[#027a48] hover:bg-[#ecfdf3]"}`}
                     >
                       {user.isActive ? "Deactivate" : "Activate"}
                     </button>
