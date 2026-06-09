@@ -512,9 +512,12 @@ export default function Reports() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-24" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div
+                className={`flex-1 px-6 pt-6 pb-24 ${isEditing ? 'flex flex-col min-h-0' : 'overflow-y-auto'}`}
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
                 {/* Report title + status */}
-                <div className="mb-5">
+                <div className="mb-5 shrink-0">
                   <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black mb-2">
                     {selectedReport.title}
                   </h2>
@@ -529,20 +532,19 @@ export default function Reports() {
                 </div>
 
                 {/* Report content */}
-                <div className="flex flex-col gap-4">
+                <div className={`flex flex-col gap-2 ${isEditing ? 'flex-1 min-h-0' : ''}`}>
                   {editSaveError && (
-                    <div className="px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px]">
+                    <div className="px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] shrink-0">
                       <p className="text-[12px] text-[#b42318]">{editSaveError}</p>
                     </div>
                   )}
                   {(fullReportData?.executiveSummary || fullReportData?.executive_summary || isEditing) ? (
-                    <div>
+                    <div className={isEditing ? 'flex-1 flex flex-col min-h-0' : ''}>
                       {isEditing ? (
                         <textarea
                           value={editedSummary}
                           onChange={(e) => setEditedSummary(e.target.value)}
-                          rows={12}
-                          className="w-full px-3 py-2.5 border border-[#144430] rounded-[8px] text-[13px] text-[#344054] leading-[22px] resize-none focus:outline-none focus:ring-1 focus:ring-[#144430]"
+                          className="flex-1 min-h-0 w-full px-3 py-2.5 border border-[#144430] rounded-[8px] text-[13px] text-[#344054] leading-[22px] resize-none focus:outline-none focus:ring-1 focus:ring-[#144430]"
                         />
                       ) : (
                         <p className="text-[13px] text-[#475467] leading-[22px]">{String(fullReportData?.executiveSummary ?? fullReportData?.executive_summary ?? '')}</p>
