@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { Home, FileText, Files, LineChart, Users, Settings, LogOut, MessageSquare, Menu } from "lucide-react";
+import { Home, FileText, Files, LineChart, Users, Settings, LogOut, Menu } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi, getDashboardMetrics } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
@@ -217,14 +217,6 @@ export default function DashboardLayout() {
                 <div className="flex items-center gap-[12px] pl-[16px]">
                   <FileText className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/reports").icon} />
                   <p className={navBtn("/reports").text}>Reports</p>
-                </div>
-              </button>
-
-              {/* Ask AI */}
-              <button onClick={() => navigate("/chat")} className={navBtn("/chat").btn}>
-                <div className="flex items-center gap-[12px] pl-[16px]">
-                  <MessageSquare className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/chat").icon} />
-                  <p className={navBtn("/chat").text}>Ask AI</p>
                 </div>
               </button>
 
