@@ -196,7 +196,7 @@ export default function ChatBotWidget() {
         <div className="fixed top-0 right-0 h-screen w-[420px] bg-white border-l border-[#eaecf0] shadow-2xl z-[900] flex flex-col">
 
           {/* Header */}
-          <div className="px-3 py-2.5 border-b border-[#eaecf0] flex items-center gap-1 shrink-0">
+          <div className="px-4 py-3 border-b border-[#eaecf0] flex items-center gap-1 shrink-0">
 
             {/* Left: [bot avatar for named chats] title + history chevron */}
             <div className="relative flex items-center gap-1.5 min-w-0 flex-1" ref={historyRef}>

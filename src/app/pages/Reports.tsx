@@ -567,7 +567,7 @@ export default function Reports() {
 
               {/* Footer Buttons — hidden for approved reports */}
               {selectedReport.status !== "Finalized" && (
-                <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white border-t-2 border-[#eaecf0]">
+                <div className="absolute bottom-0 left-0 right-0 px-6 py-3 bg-white border-t-2 border-[#eaecf0]">
                   {finalizeError && (
                     <div className="mb-3 px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] flex items-start gap-2">
                       <svg className="size-4 text-[#b42318] shrink-0 mt-0.5" fill="none" viewBox="0 0 16 16"><path d="M8 5v4M8 11h.01M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
@@ -606,7 +606,7 @@ export default function Reports() {
                           setIsEditing(true);
                         }
                       }}
-                      className="h-[53px] px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="h-10 px-4 w-[124px] border border-[#c9cdd6] rounded-[10px] flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isEditing ? (
                         <>
@@ -645,7 +645,7 @@ export default function Reports() {
                           setFinalizeError(err instanceof Error ? err.message : 'Failed to finalize report. Please try again.');
                         }
                       }}
-                      className="h-[53px] px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2"
+                      className="h-10 px-4 w-[217px] bg-[#144430] rounded-[10px] flex items-center justify-center gap-2"
                     >
                       <div className="flex items-center justify-center size-6">
                         <svg className="size-4" viewBox="0 0 20 15" fill="none">
