@@ -623,9 +623,9 @@ export default function Documents() {
       {selectedDocument && (
         <div
           className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
-            isPanelExpanded ? (isFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]') : 'w-0'
+            isPanelExpanded ? (isFullWidth ? '' : 'w-[500px]') : 'w-0'
           }`}
-          style={{ zIndex: 1000, right: chatOpen ? 420 : 0 }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, ...(isPanelExpanded && isFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
         >
           {isPanelExpanded && (
             <div className="flex flex-col h-full">
@@ -1107,9 +1107,9 @@ export default function Documents() {
       {showComparePanel && (
         <div
           className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
-            compareIsFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]'
+            compareIsFullWidth ? '' : 'w-[500px]'
           }`}
-          style={{ zIndex: 1000, right: chatOpen ? 420 : 0 }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0, ...(compareIsFullWidth ? { width: `calc(100vw - 187px${chatOpen ? ' - 420px' : ''})` } : {}) }}
         >
           <div className="flex flex-col h-full">
             {/* Header */}
