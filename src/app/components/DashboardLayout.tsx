@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { Home, FileText, LineChart, Users, Settings, LogOut, MessageSquare, Menu } from "lucide-react";
+import { Home, FileText, Files, LineChart, Users, Settings, LogOut, MessageSquare, Menu } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi, getDashboardMetrics } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
@@ -191,10 +191,7 @@ export default function DashboardLayout() {
               {/* AI Document Analysis */}
               <button onClick={() => navigate("/documents")} className={navBtn("/documents").btn}>
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <svg className="size-[20px] shrink-0" viewBox="0 0 20 20" fill={navBtn("/documents").icon}>
-                    <path d="M8 6.5 C8.2 8.5 9 11 13.5 12 C11.5 12.2 9 13 8 17.5 C7.8 15.5 7 13 2.5 12 C4.5 11.8 7 11 8 6.5Z"/>
-                    <path d="M16 1 C16.1 2.5 16.6 3.4 19 4 C17 4.1 16.1 4.8 16 7 C15.9 5.5 15.4 4.6 13 4 C15 3.9 15.9 3.2 16 1Z"/>
-                  </svg>
+                  <Files className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/documents").icon} />
                   <p className={navBtn("/documents").text}>Documents</p>
                 </div>
               </button>
@@ -203,7 +200,7 @@ export default function DashboardLayout() {
               <button onClick={() => navigate("/ai-analysis")} className={navBtn("/ai-analysis").btn}>
                 <div className="flex items-center gap-[12px] pl-[16px]">
                   <LineChart className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/ai-analysis").icon} />
-                  <p className={navBtn("/ai-analysis").text}>Metrics Summary</p>
+                  <p className={navBtn("/ai-analysis").text}>Metrics</p>
                   {anomalyCount > 0 && (
                     <span className="ml-auto mr-3 min-w-[18px] h-[18px] px-1 bg-[#b42318] rounded-full text-white text-[10px] font-semibold flex items-center justify-center">
                       {anomalyCount > 99 ? "99+" : anomalyCount}
