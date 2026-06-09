@@ -35,7 +35,7 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
-  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'metrics' | 'discrepancies'>('summary');
+  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'metrics' | 'discrepancies' | 'issues'>('summary');
 
   // Full document data fetched on panel open
   const [fullDocData, setFullDocData] = useState<Record<string, unknown> | null>(null);
@@ -725,6 +725,12 @@ export default function Documents() {
                     >
                       Discrepancies
                     </button>
+                    <button
+                      onClick={() => setActiveDocTab('issues')}
+                      className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === 'issues' ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
+                    >
+                      Issues
+                    </button>
                   </div>
                 </div>
 
@@ -908,6 +914,70 @@ export default function Documents() {
                                 {page != null && (
                                   <span className="text-[10px] text-[#98a2b3]">p. {page}</span>
                                 )}
+                              </div>
+                            </div>
+                            {description && (
+                              <div className="text-[13px] text-[#475467] leading-[22px]">{description}</div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+
+                {/* Issues tab */}
+                {activeDocTab === 'issues' && !docLoading && (
+                  <div className="flex flex-col gap-3">
+                    {(() => {
+                      const raw =
+                        fullDocData?.issues ??
+                        fullDocData?.concerns ??
+                        fullDocData?.risks ??
+                        fullDocData?.riskFactors ??
+                        fullDocData?.risk_factors ??
+                        fullDocData?.businessRisks ??
+                        fullDocData?.business_risks ??
+                        fullDocData?.alerts;
+                      const items: Record<string, unknown>[] = Array.isArray(raw)
+                        ? (raw as Record<string, unknown>[])
+                        : [];
+
+                      if (items.length === 0) return (
+                        <p className="text-[13px] text-[#667085] italic">No issues identified for this document.</p>
+                      );
+
+                      const severityStyles: Record<string, string> = {
+                        high:     'bg-[#fff1f2] text-[#e11d48]',
+                        critical: 'bg-[#fff1f2] text-[#e11d48]',
+                        medium:   'bg-[#fffbeb] text-[#d97706]',
+                        warning:  'bg-[#fffbeb] text-[#d97706]',
+                        low:      'bg-[#f8fafc] text-[#64748b]',
+                        info:     'bg-[#eff6ff] text-[#3b82f6]',
+                      };
+
+                      const fmtKey = (k: string) =>
+                        k.replace(/([a-z])([A-Z])/g, '$1 $2')
+                         .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+                         .replace(/_/g, ' ')
+                         .replace(/\b\w/g, c => c.toUpperCase())
+                         .trim();
+
+                      return items.map((item, i) => {
+                        const title = String(item.type ?? item.title ?? item.name ?? item.category ?? `Issue ${i + 1}`);
+                        const description = String(item.description ?? item.detail ?? item.message ?? item.recommendation ?? '');
+                        const severity = String(item.severity ?? item.level ?? item.priority ?? item.impact ?? 'low').toLowerCase();
+
+                        const sStyle = severityStyles[severity] ?? severityStyles.low;
+
+                        return (
+                          <div key={i} className="border border-[#eaecf0] rounded-[8px] p-3">
+                            <div className="flex justify-between items-start mb-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[11px] text-[#667085] uppercase tracking-wider">{fmtKey(title)}</span>
+                                <span className={`text-[12px] px-3 py-1 rounded-full font-medium ${sStyle}`}>
+                                  {severity.charAt(0).toUpperCase() + severity.slice(1)}
+                                </span>
                               </div>
                             </div>
                             {description && (
