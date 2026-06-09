@@ -35,7 +35,7 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
-  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'metrics'>('summary');
+  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'metrics' | 'discrepancies'>('summary');
 
   // Full document data fetched on panel open
   const [fullDocData, setFullDocData] = useState<Record<string, unknown> | null>(null);
@@ -679,6 +679,12 @@ export default function Documents() {
                     >
                       Key Metrics
                     </button>
+                    <button
+                      onClick={() => setActiveDocTab('discrepancies')}
+                      className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === 'discrepancies' ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
+                    >
+                      Discrepancies
+                    </button>
                   </div>
                 </div>
 
@@ -800,6 +806,71 @@ export default function Documents() {
                               />
                             ) : (
                               <div className="text-[13px] text-[#475467] leading-[22px]">{displayValue}</div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+
+                {/* Discrepancies tab */}
+                {activeDocTab === 'discrepancies' && !docLoading && (
+                  <div className="flex flex-col gap-3">
+                    {(() => {
+                      const raw = fullDocData?.anomalies ?? fullDocData?.discrepancies ?? fullDocData?.flags;
+                      const items: Record<string, unknown>[] = Array.isArray(raw)
+                        ? (raw as Record<string, unknown>[])
+                        : [];
+
+                      if (items.length === 0) return (
+                        <p className="text-[13px] text-[#667085] italic">No discrepancies flagged for this document.</p>
+                      );
+
+                      const severityStyles: Record<string, string> = {
+                        high:   'bg-[#fef3f2] text-[#b42318] border-[#fca5a5]',
+                        medium: 'bg-[#fef0c7] text-[#dc6803] border-[#fcd34d]',
+                        low:    'bg-[#f2f4f7] text-[#344054] border-[#d0d5dd]',
+                      };
+
+                      const fmtKey = (k: string) =>
+                        k.replace(/([a-z])([A-Z])/g, '$1 $2')
+                         .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+                         .replace(/_/g, ' ')
+                         .replace(/\b\w/g, c => c.toUpperCase())
+                         .trim();
+
+                      return items.map((item, i) => {
+                        const title = String(item.type ?? item.title ?? item.name ?? `Discrepancy ${i + 1}`);
+                        const description = String(item.description ?? item.detail ?? item.message ?? '');
+                        const severity = String(item.severity ?? item.level ?? item.impact ?? 'low').toLowerCase();
+                        const confidence = item.confidence != null
+                          ? `${Math.round(Number(item.confidence) * (Number(item.confidence) <= 1 ? 100 : 1))}%`
+                          : null;
+                        const page = item.page ?? item.pageNumber ?? item.page_number;
+
+                        const sStyle = severityStyles[severity] ?? severityStyles.low;
+
+                        return (
+                          <div key={i} className="border border-[#eaecf0] rounded-[8px] p-3">
+                            <div className="flex justify-between items-start mb-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[11px] text-[#667085] uppercase tracking-wider">{fmtKey(title)}</span>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide border ${sStyle}`}>
+                                  {severity.charAt(0).toUpperCase() + severity.slice(1)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0 ml-2">
+                                {confidence && (
+                                  <span className="text-[10px] text-[#98a2b3]">{confidence}</span>
+                                )}
+                                {page != null && (
+                                  <span className="text-[10px] text-[#98a2b3]">p. {page}</span>
+                                )}
+                              </div>
+                            </div>
+                            {description && (
+                              <div className="text-[13px] text-[#475467] leading-[22px]">{description}</div>
                             )}
                           </div>
                         );
