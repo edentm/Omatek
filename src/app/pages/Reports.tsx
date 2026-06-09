@@ -877,7 +877,7 @@ export default function Reports() {
                                     checked ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
                                   )
                                 }
-                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${checked ? 'bg-[#f0f9f4]' : 'bg-white hover:bg-[#f9fafb]'}`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${checked ? 'bg-[#f2f4f7]' : 'bg-white hover:bg-[#f9fafb]'}`}
                               >
                                 <div className={`size-4 rounded border flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-[#144430] border-[#144430]' : 'border-[#d0d5dd]'}`}>
                                   {checked && (
