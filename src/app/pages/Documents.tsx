@@ -667,15 +667,21 @@ export default function Documents() {
                 {/* Tabs */}
                 <div className="border-b border-[#eaecf0] mb-4">
                   <div className="flex gap-1">
-                    {([['summary', 'Summary'], ['metrics', 'Key Metrics']] as const).map(([tab, label]) => (
-                      <button
-                        key={tab}
-                        onClick={() => setActiveDocTab(tab)}
-                        className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === tab ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    <button
+                      onClick={() => setActiveDocTab('summary')}
+                      className={`flex items-center gap-1.5 text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === 'summary' ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
+                    >
+                      <svg className="size-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0 C8.3 2.8 9.5 6.5 16 8 C9.5 9.5 8.3 13.2 8 16 C7.7 13.2 6.5 9.5 0 8 C6.5 6.5 7.7 2.8 8 0Z"/>
+                      </svg>
+                      AI Summary
+                    </button>
+                    <button
+                      onClick={() => setActiveDocTab('metrics')}
+                      className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === 'metrics' ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
+                    >
+                      Key Metrics
+                    </button>
                   </div>
                 </div>
 
@@ -724,11 +730,45 @@ export default function Documents() {
                       </div>
                     )}
                     {(() => {
-                      const raw = (fullDocData?.keyMetrics ?? fullDocData?.extractedMetrics ?? {}) as Record<string, unknown>;
-                      const entries = Object.entries(raw);
+                      // Fields that are structural/narrative — not metrics to display as cards
+                      const SKIP = new Set([
+                        'id','title','documentName','document_name','documentId','document_id',
+                        'executiveSummary','executive_summary','summary','documentSummary','document_summary',
+                        'anomalies','recommendations','healthScore','healthRating','health_score','health_rating',
+                        'confidenceScore','confidence_score','isLocked','is_locked','reportNumber','report_number',
+                        'type','report_type','category','status','createdAt','created_at','updatedAt','updated_at',
+                        'signedAt','signed_at','finalizedAt','finalized_at','performanceIndicators','performance_indicators',
+                      ]);
+
+                      // Collect all metrics: start with keyMetrics, then scan other object fields
+                      const seen = new Set<string>();
+                      const entries: Array<[string, unknown]> = [];
+                      const add = (k: string, v: unknown) => { if (!seen.has(k)) { seen.add(k); entries.push([k, v]); } };
+
+                      const primary = (fullDocData?.keyMetrics ?? fullDocData?.extractedMetrics) as Record<string, unknown> | undefined;
+                      if (primary) Object.entries(primary).forEach(([k, v]) => add(k, v));
+
+                      if (fullDocData) {
+                        Object.entries(fullDocData).forEach(([k, v]) => {
+                          if (SKIP.has(k) || k === 'keyMetrics' || k === 'extractedMetrics') return;
+                          if (v && typeof v === 'object' && !Array.isArray(v)) {
+                            Object.entries(v as Record<string, unknown>).forEach(([subK, subV]) => add(subK, subV));
+                          }
+                        });
+                      }
+
+                      // camelCase / snake_case → "Title Case With Spaces"
+                      const fmtKey = (k: string) =>
+                        k.replace(/([a-z])([A-Z])/g, '$1 $2')
+                         .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+                         .replace(/_/g, ' ')
+                         .replace(/\b\w/g, c => c.toUpperCase())
+                         .trim();
+
                       if (entries.length === 0) return (
                         <p className="text-[13px] text-[#667085] italic">No key metrics extracted from this document.</p>
                       );
+
                       return entries.map(([key, val]) => {
                         let value: string;
                         let page: string | number | undefined;
@@ -745,7 +785,7 @@ export default function Documents() {
                           <div key={key} className="border border-[#eaecf0] rounded-[8px] p-3">
                             <div className="flex justify-between items-start mb-1.5">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-[#667085] uppercase tracking-wider">{key.replace(/_/g, ' ')}</span>
+                                <span className="text-[11px] text-[#667085] uppercase tracking-wider">{fmtKey(key)}</span>
                                 {wasEdited && (
                                   <span className="text-[9px] bg-[#fef0c7] text-[#dc6803] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">Edited</span>
                                 )}
@@ -759,10 +799,10 @@ export default function Documents() {
                                 type="text"
                                 value={displayValue}
                                 onChange={e => setEditedMetrics(prev => ({ ...prev, [key]: e.target.value }))}
-                                className="w-full px-2 py-1.5 border border-[#144430] rounded-[6px] text-[14px] font-semibold text-black focus:outline-none focus:ring-1 focus:ring-[#144430]"
+                                className="w-full px-2 py-1.5 border border-[#144430] rounded-[6px] text-[13px] text-[#475467] leading-[22px] focus:outline-none focus:ring-1 focus:ring-[#144430]"
                               />
                             ) : (
-                              <div className="text-[15px] font-semibold text-black">{displayValue}</div>
+                              <div className="text-[13px] text-[#475467] leading-[22px]">{displayValue}</div>
                             )}
                           </div>
                         );
