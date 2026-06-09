@@ -116,7 +116,7 @@ export default function Dashboard() {
         <div className="relative shrink-0" ref={periodDropdownRef}>
           <button
             onClick={() => setPeriodDropdownOpen(o => !o)}
-            className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors min-w-[200px]"
+            className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors min-w-[160px]"
           >
             <svg className="size-[18px] shrink-0 text-[#667085]" fill="none" viewBox="0 0 20 20">
               <path d="M6.667 1.667v2.5M13.333 1.667v2.5M2.5 7.5h15M4.167 3.333h11.666A1.667 1.667 0 0 1 17.5 5v11.667a1.667 1.667 0 0 1-1.667 1.666H4.167A1.667 1.667 0 0 1 2.5 16.667V5a1.667 1.667 0 0 1 1.667-1.667z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
