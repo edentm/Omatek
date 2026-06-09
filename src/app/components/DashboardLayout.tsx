@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { Home, Brain, FileText, LineChart, Users, Settings, LogOut, MessageSquare, Menu } from "lucide-react";
+import { Home, FileText, LineChart, Users, Settings, LogOut, MessageSquare, Menu } from "lucide-react";
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi, getDashboardMetrics } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
@@ -204,8 +204,11 @@ export default function DashboardLayout() {
               {/* AI Document Analysis */}
               <button onClick={() => navigate("/documents")} className={navBtn("/documents").btn}>
                 <div className="flex items-center gap-[12px] pl-[16px]">
-                  <Brain className="size-[20px] shrink-0" strokeWidth={1.66667} color={navBtn("/documents").icon} />
-                  <p className={navBtn("/documents").text}>AI Document Analysis</p>
+                  <svg className="size-[20px] shrink-0" viewBox="0 0 20 20" fill={navBtn("/documents").icon}>
+                    <path d="M8 6.5 C8.2 8.5 9 11 13.5 12 C11.5 12.2 9 13 8 17.5 C7.8 15.5 7 13 2.5 12 C4.5 11.8 7 11 8 6.5Z"/>
+                    <path d="M16 1 C16.1 2.5 16.6 3.4 19 4 C17 4.1 16.1 4.8 16 7 C15.9 5.5 15.4 4.6 13 4 C15 3.9 15.9 3.2 16 1Z"/>
+                  </svg>
+                  <p className={navBtn("/documents").text}>Documents</p>
                 </div>
               </button>
 
