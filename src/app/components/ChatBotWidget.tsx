@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { askPlatform, getChatHistory } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
+import chatbotIcon from "../../assets/chatbot.svg";
 
 type Message = { role: "user" | "assistant"; text: string; tokensUsed?: number };
 type HistoryItem = { id: number; sessionId: string | null; question: string; answer: string | null; tokensUsed: number | null; createdAt: string };
@@ -8,20 +9,6 @@ type Session = { sessionId: string | null; title: string; date: string; items: H
 
 const GREETING = "How can I help you today?";
 const DEFAULT_TITLE = "New AI Chat";
-
-function BotIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 36 36" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M9 17 C9 8 27 8 27 17" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round"/>
-      <rect x="2" y="15" width="8" height="10" rx="4"/>
-      <rect x="26" y="15" width="8" height="10" rx="4"/>
-      <circle cx="18" cy="21" r="9"/>
-      <circle cx="14" cy="21" r="2.2" fill="white"/>
-      <circle cx="22" cy="21" r="2.2" fill="white"/>
-      <path d="M13 27.5 Q18 32 23 27.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-    </svg>
-  );
-}
 
 export default function ChatBotWidget() {
   const { isExhausted, deductTokens } = useTokenLedger();
@@ -199,7 +186,7 @@ export default function ChatBotWidget() {
           className="fixed bottom-6 right-6 z-[900] size-12 bg-white border border-[#d0d5dd] rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
           title="Open AI Assistant"
         >
-          <BotIcon className="size-6 text-[#4b5563]" />
+          <img src={chatbotIcon} className="size-6" alt="" />
         </button>
       )}
 
@@ -215,7 +202,7 @@ export default function ChatBotWidget() {
               {/* Bot avatar — only shown for named (non-default) chats */}
               {!isDefaultTitle && !isRenaming && (
                 <div className="size-[26px] rounded-full bg-[#f2f4f7] flex items-center justify-center shrink-0">
-                  <BotIcon className="size-[13px] text-[#4b5563]" />
+                  <img src={chatbotIcon} className="size-[13px]" alt="" />
                 </div>
               )}
 
@@ -348,7 +335,7 @@ export default function ChatBotWidget() {
           <div className="flex-1 overflow-y-auto px-5 flex flex-col">
             {isGreetingOnly ? (
               <div className="flex-1 flex flex-col justify-end pb-5">
-                <BotIcon className="size-12 text-[#4b5563] mb-3" />
+                <img src={chatbotIcon} className="size-12 mb-3" alt="" />
                 <p className="font-['Figtree:Medium',sans-serif] font-medium text-[20px] text-black leading-tight">
                   {GREETING}
                 </p>
