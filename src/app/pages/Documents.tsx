@@ -31,6 +31,12 @@ export default function Documents() {
   const [docsError, setDocsError] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+  // Side panel state
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+  const [isFullWidth, setIsFullWidth] = useState(false);
+  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'scorecard' | 'fraud'>('summary');
+
   const [searchQuery, setSearchQuery] = useState("");
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
@@ -403,8 +409,12 @@ export default function Documents() {
                         const isSelected = selectedIds.has(doc.id);
                         const confPill = getConfidencePill(doc.aiConfidence);
                         return (
-                          <tr key={doc.id} className={`hover:bg-gray-50 ${isSelected ? "bg-[#f0f9f4]" : ""}`}>
-                            <td className="px-4 py-4 w-10">
+                          <tr
+                            key={doc.id}
+                            className={`cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-[#f0f9f4]" : ""} ${selectedDocument?.id === doc.id ? "bg-[#f0f9f4]" : ""}`}
+                            onClick={() => { setSelectedDocument(doc); setIsPanelExpanded(true); setActiveDocTab('summary'); }}
+                          >
+                            <td className="px-4 py-4 w-10" onClick={e => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={isSelected}
@@ -459,7 +469,7 @@ export default function Documents() {
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-4 whitespace-nowrap text-right">
+                            <td className="px-4 py-4 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
                                 <button
                                   onClick={() => openDocument(doc.id)}
@@ -506,6 +516,164 @@ export default function Documents() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Document Side Panel */}
+      {selectedDocument && (
+        <div
+          className={`fixed top-0 right-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
+            isPanelExpanded ? (isFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]') : 'w-0'
+          }`}
+          style={{ zIndex: 1000 }}
+        >
+          {isPanelExpanded && (
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="border-b border-[#eaecf0] px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsFullWidth(!isFullWidth)}
+                    title={isFullWidth ? "Collapse panel" : "Expand panel"}
+                    className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
+                      {isFullWidth ? (
+                        <>
+                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                          <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
+                        </>
+                      ) : (
+                        <>
+                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                          <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                        </>
+                      )}
+                    </svg>
+                    {isFullWidth ? "Collapse" : "Expand"}
+                  </button>
+                  <button
+                    onClick={() => openDocument(selectedDocument.id)}
+                    className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
+                      <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Open Document
+                  </button>
+                </div>
+                <button
+                  onClick={() => { setSelectedDocument(null); setIsFullWidth(false); }}
+                  className="flex items-center gap-1.5 h-[32px] px-3 rounded-lg text-[12px] text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+                >
+                  <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 20 20">
+                    <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Close
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-8" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {/* Document title and meta */}
+                <div className="mb-4">
+                  <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black mb-2">
+                    {selectedDocument.title}
+                  </h2>
+                  <div className="flex gap-2 text-[12px] text-[#52565c] mb-3">
+                    <span>Uploaded: {selectedDocument.uploadDate}</span>
+                    {selectedDocument.uploadedBy && <span>· By: {selectedDocument.uploadedBy}</span>}
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-['Inter:Regular',sans-serif] ${
+                      selectedDocument.status === "Approved" ? "bg-[#ecfdf3] text-[#027a48]" : "bg-[#e8f0fe] text-[#1a56db]"
+                    }`}>
+                      {selectedDocument.status}
+                    </span>
+                    {selectedDocument.type !== "—" && (
+                      <span className="inline-block px-2 py-1 rounded-full text-[12px] bg-[#f2f4f7] text-[#344054]">
+                        {selectedDocument.type}
+                      </span>
+                    )}
+                    {selectedDocument.aiConfidence !== "—" && (() => {
+                      const p = getConfidencePill(selectedDocument.aiConfidence);
+                      return (
+                        <span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>
+                          {p.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="border-b border-[#eaecf0] mb-4">
+                  <div className="flex gap-1">
+                    {([['summary', 'Summary'], ['scorecard', 'Scorecard'], ['fraud', 'Fraud Score']] as const).map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveDocTab(tab)}
+                        className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === tab ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Summary tab */}
+                {activeDocTab === 'summary' && (
+                  <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: "Document Type", value: selectedDocument.type },
+                        { label: "Upload Date", value: selectedDocument.uploadDate },
+                        { label: "Uploaded By", value: selectedDocument.uploadedBy },
+                        { label: "Status", value: selectedDocument.status },
+                        { label: "Approval Date", value: selectedDocument.approvalDate },
+                        { label: "AI Confidence", value: selectedDocument.aiConfidence },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-3">
+                          <div className="text-[10px] text-[#667085] uppercase tracking-wider mb-1">{label}</div>
+                          <div className="text-[13px] font-semibold text-black">{value || "—"}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-4">
+                      <p className="text-[12px] text-[#667085] italic">Document summary will appear here after analysis is complete.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Scorecard tab */}
+                {activeDocTab === 'scorecard' && (
+                  <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-4">
+                    <p className="text-[13px] text-[#667085] italic">Scorecard analysis will be available here.</p>
+                  </div>
+                )}
+
+                {/* Fraud Score tab */}
+                {activeDocTab === 'fraud' && (
+                  <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] p-4">
+                    <p className="text-[13px] text-[#667085] italic">Fraud risk analysis will be available here.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Collapsed panel indicator */}
+      {selectedDocument && !isPanelExpanded && (
+        <button
+          onClick={() => setIsPanelExpanded(true)}
+          className="fixed top-1/2 right-0 -translate-y-1/2 bg-white border border-[#eaecf0] rounded-l-lg p-2 shadow-lg hover:bg-gray-50"
+          style={{ zIndex: 1000 }}
+        >
+          <svg className="size-5 text-[#667085]" fill="none" viewBox="0 0 16 16">
+            <path d="M10 3L5 8L10 13" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"/>
+          </svg>
+        </button>
       )}
 
       {/* Doc Toast */}
