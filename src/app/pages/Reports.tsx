@@ -3,9 +3,11 @@ import svgPaths from "../../imports/DocumentIntelligencePrototype/svg-9a8cfnzrn9
 import FilterButton from "../components/FilterButton";
 import { getReports, getReport, editReport, finalizeReport, exportReportPresentation, fetchReportPresentationHTML, generateCustomReport, getDocuments } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
+import { useChatPanel } from "../../contexts/ChatPanelContext";
 
 export default function Reports() {
   const { isExhausted } = useTokenLedger();
+  const { chatOpen } = useChatPanel();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
@@ -466,10 +468,10 @@ export default function Reports() {
       {/* Side Panel */}
       {selectedReport && (
         <div 
-          className={`fixed top-0 right-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
+          className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
             isPanelExpanded ? (isFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]') : 'w-0'
           }`}
-          style={{ zIndex: 1000 }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0 }}
         >
           {isPanelExpanded && (
             <div className="flex flex-col h-full">
@@ -1152,8 +1154,8 @@ export default function Reports() {
       {selectedReport && !isPanelExpanded && (
         <button
           onClick={() => setIsPanelExpanded(true)}
-          className="fixed top-1/2 right-0 -translate-y-1/2 bg-white border border-[#eaecf0] rounded-l-lg p-2 shadow-lg hover:bg-gray-50"
-          style={{ zIndex: 1000 }}
+          className="fixed top-1/2 -translate-y-1/2 bg-white border border-[#eaecf0] rounded-l-lg p-2 shadow-lg hover:bg-gray-50 transition-all duration-300"
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0 }}
         >
           <svg className="size-5 text-[#667085]" fill="none" viewBox="0 0 16 16">
             <path d={svgPaths.p14ca9100} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />

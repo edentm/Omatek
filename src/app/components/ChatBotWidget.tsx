@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { askPlatform, getChatHistory } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
+import { useChatPanel } from "../../contexts/ChatPanelContext";
 import chatbotIcon from "../../assets/chatbot.svg";
 
 type Message = { role: "user" | "assistant"; text: string; tokensUsed?: number };
@@ -12,7 +13,7 @@ const DEFAULT_TITLE = "New AI Chat";
 
 export default function ChatBotWidget() {
   const { isExhausted, deductTokens } = useTokenLedger();
-  const [isOpen, setIsOpen] = useState(false);
+  const { chatOpen: isOpen, setChatOpen: setIsOpen } = useChatPanel();
   const [messages, setMessages] = useState<Message[]>([{ role: "assistant", text: GREETING }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -183,7 +184,7 @@ export default function ChatBotWidget() {
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="fixed bottom-6 right-6 z-[900] size-12 bg-white border border-[#d0d5dd] rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
+          className="fixed bottom-6 right-6 z-[1100] size-12 bg-white border border-[#d0d5dd] rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
           title="Open AI Assistant"
         >
           <img src={chatbotIcon} className="size-6" alt="" />

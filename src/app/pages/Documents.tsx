@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useChatPanel } from "../../contexts/ChatPanelContext";
 import FilterButton from "../components/FilterButton";
 import { getDocuments, getReports, getReport, uploadDocument, openDocument, pollJobStatus, deleteDocument, editDocumentData, approveDocument, multiAnalyze } from "../../api";
 
@@ -25,6 +26,7 @@ const getConfidencePill = (confidence: string) => {
 };
 
 export default function Documents() {
+  const { chatOpen } = useChatPanel();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -620,10 +622,10 @@ export default function Documents() {
       {/* Document Side Panel */}
       {selectedDocument && (
         <div
-          className={`fixed top-0 right-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
+          className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
             isPanelExpanded ? (isFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]') : 'w-0'
           }`}
-          style={{ zIndex: 1000 }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0 }}
         >
           {isPanelExpanded && (
             <div className="flex flex-col h-full">
@@ -1106,10 +1108,10 @@ export default function Documents() {
       {/* Comparison Side Panel */}
       {showComparePanel && (
         <div
-          className={`fixed top-0 right-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
+          className={`fixed top-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
             compareIsFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]'
           }`}
-          style={{ zIndex: 1000 }}
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0 }}
         >
           <div className="flex flex-col h-full">
             {/* Header */}
@@ -1288,8 +1290,8 @@ export default function Documents() {
       {selectedDocument && !isPanelExpanded && (
         <button
           onClick={() => setIsPanelExpanded(true)}
-          className="fixed top-1/2 right-0 -translate-y-1/2 bg-white border border-[#eaecf0] rounded-l-lg p-2 shadow-lg hover:bg-gray-50"
-          style={{ zIndex: 1000 }}
+          className="fixed top-1/2 -translate-y-1/2 bg-white border border-[#eaecf0] rounded-l-lg p-2 shadow-lg hover:bg-gray-50 transition-all duration-300"
+          style={{ zIndex: 1000, right: chatOpen ? 420 : 0 }}
         >
           <svg className="size-5 text-[#667085]" fill="none" viewBox="0 0 16 16">
             <path d="M10 3L5 8L10 13" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"/>

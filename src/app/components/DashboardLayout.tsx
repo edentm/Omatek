@@ -4,6 +4,8 @@ import { Home, FileText, Files, LineChart, Users, Settings, LogOut, MessageSquar
 import imgUntitledDesign41 from "figma:asset/f3bfc5197c2b5c175bc0831b10ffdf71cbe9c3a3.png";
 import { logoutApi, getDashboardMetrics } from "../../api";
 import { useTokenLedger } from "../../contexts/TokenLedgerContext";
+import { ChatPanelProvider } from "../../contexts/ChatPanelContext";
+import ChatBotWidget from "./ChatBotWidget";
 
 interface Notification {
   id: string;
@@ -148,6 +150,7 @@ export default function DashboardLayout() {
     : "hidden md:flex flex-col bg-[#f9fafb] h-full relative shrink-0 w-[187px]";
 
   return (
+    <ChatPanelProvider>
     <div className="bg-white flex h-screen w-full overflow-hidden">
 
       {/* Mobile overlay backdrop */}
@@ -303,6 +306,9 @@ export default function DashboardLayout() {
         </button>
         <Outlet />
       </div>
+
+      <ChatBotWidget />
     </div>
+    </ChatPanelProvider>
   );
 }
