@@ -17,7 +17,7 @@ const fmt = (val?: number | null) => {
 }
 
 const TIME_PERIODS = [
-  { label: "Current Period", value: "current" },
+  { label: "All Time", value: "current" },
   { label: "May 2026", value: "2026-05" },
   { label: "Apr 2026", value: "2026-04" },
   { label: "Mar 2026", value: "2026-03" },
