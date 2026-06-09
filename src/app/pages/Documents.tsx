@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import FilterButton from "../components/FilterButton";
-import { getDocuments, getReports, getReport, uploadDocument, openDocument, pollJobStatus, deleteDocument, editDocumentData, approveDocument } from "../../api";
+import { getDocuments, getReports, getReport, uploadDocument, openDocument, pollJobStatus, deleteDocument, editDocumentData, approveDocument, multiAnalyze } from "../../api";
 
 type Document = {
   id: number;
@@ -51,6 +51,13 @@ export default function Documents() {
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   // Tracks which metric keys were user-edited per document (persists for the session)
   const docEditedFields = useRef<Map<number, Set<string>>>(new Map());
+
+  // Comparison panel state
+  const [showComparePanel, setShowComparePanel] = useState(false);
+  const [compareIsFullWidth, setCompareIsFullWidth] = useState(false);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+  const [compareResult, setCompareResult] = useState<Record<string, unknown> | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -220,6 +227,23 @@ export default function Documents() {
     finally { setDeletingId(null); }
   };
 
+  const handleCompare = async () => {
+    setShowComparePanel(true);
+    setSelectedDocument(null);
+    setCompareLoading(true);
+    setCompareError(null);
+    setCompareResult(null);
+    try {
+      const ids = Array.from(selectedIds);
+      const result = await multiAnalyze(ids) as Record<string, unknown>;
+      setCompareResult(result);
+    } catch (err) {
+      setCompareError(err instanceof Error ? err.message : 'Failed to compare documents.');
+    } finally {
+      setCompareLoading(false);
+    }
+  };
+
   const openDocPanel = async (doc: Document) => {
     setSelectedDocument(doc);
     setIsPanelExpanded(true);
@@ -314,17 +338,33 @@ export default function Documents() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
-        >
-          <svg className="size-5" fill="none" viewBox="0 0 20 20">
-            <path d="M10 4.16667V15.8333M4.16667 10H15.8333" stroke="#344054" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
-            Upload and Analyze Documents
-          </p>
-        </button>
+        <div className="flex items-center gap-3">
+          {selectedIds.size >= 2 && (
+            <button
+              onClick={handleCompare}
+              className="bg-black h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-[#222] transition-colors"
+            >
+              <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="white">
+                <path d="M10 0 C10.2 2.5 11 5.5 16 7 C11 8.5 10.2 11.5 10 14 C9.8 11.5 9 8.5 4 7 C9 5.5 9.8 2.5 10 0Z"/>
+                <path d="M17 10 C17.1 11.3 17.6 12 20 12.5 C17.6 13 17.1 13.7 17 15 C16.9 13.7 16.4 13 14 12.5 C16.4 12 16.9 11.3 17 10Z"/>
+              </svg>
+              <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-white whitespace-nowrap">
+                Compare Documents
+              </p>
+            </button>
+          )}
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="size-5" fill="none" viewBox="0 0 20 20">
+              <path d="M10 4.16667V15.8333M4.16667 10H15.8333" stroke="#344054" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p className="font-['Figtree:Regular',sans-serif] font-normal text-[14px] text-[#344054] whitespace-nowrap">
+              Upload and Analyze Documents
+            </p>
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -989,6 +1029,166 @@ export default function Documents() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Comparison Side Panel */}
+      {showComparePanel && (
+        <div
+          className={`fixed top-0 right-0 h-screen bg-white border-l border-[#eaecf0] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] transition-all duration-300 ${
+            compareIsFullWidth ? 'w-[calc(100vw-187px)]' : 'w-[500px]'
+          }`}
+          style={{ zIndex: 1000 }}
+        >
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="border-b border-[#eaecf0] px-6 py-3 flex items-center justify-between">
+              <button
+                onClick={() => setCompareIsFullWidth(!compareIsFullWidth)}
+                title={compareIsFullWidth ? "Collapse panel" : "Expand panel"}
+                className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+              >
+                <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                  {compareIsFullWidth ? (
+                    <>
+                      <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                      <path d="M0 9.16667L4.16667 5L0 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(9, 5)"/>
+                    </>
+                  ) : (
+                    <>
+                      <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(5, 5)"/>
+                      <path d="M5 9.16667L0.833333 5L5 0.833333" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" transform="translate(10, 5)"/>
+                    </>
+                  )}
+                </svg>
+              </button>
+              <button
+                onClick={() => { setShowComparePanel(false); setCompareIsFullWidth(false); }}
+                title="Close"
+                className="flex items-center justify-center size-[32px] rounded-lg text-[#667085] hover:text-black hover:bg-gray-50 transition-colors"
+              >
+                <svg className="size-4 shrink-0" fill="none" viewBox="0 0 20 20">
+                  <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-8" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {/* Title */}
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className="size-4 shrink-0" viewBox="0 0 16 16" fill="#144430">
+                    <path d="M8 0 C8.3 2.8 9.5 6.5 16 8 C9.5 9.5 8.3 13.2 8 16 C7.7 13.2 6.5 9.5 0 8 C6.5 6.5 7.7 2.8 8 0Z"/>
+                  </svg>
+                  <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black">
+                    Document Comparison
+                  </h2>
+                </div>
+                <p className="text-[13px] text-[#667085]">
+                  {selectedIds.size} document{selectedIds.size !== 1 ? 's' : ''} selected
+                </p>
+              </div>
+
+              {/* Loading */}
+              {compareLoading && (
+                <div className="flex flex-col items-center gap-4 py-12">
+                  <svg className="size-12 animate-spin" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="24" r="20" stroke="#e5e7eb" strokeWidth="4"/>
+                    <path d="M24 4a20 20 0 0 1 20 20" stroke="#144430" strokeWidth="4" strokeLinecap="round"/>
+                  </svg>
+                  <div className="text-center">
+                    <p className="font-['Figtree:Medium',sans-serif] text-[15px] text-black">Comparing documents…</p>
+                    <p className="text-[13px] text-[#667085] mt-1">AI is analyzing and comparing the selected documents.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Error */}
+              {compareError && !compareLoading && (
+                <div className="px-4 py-3 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] flex items-start gap-2 mb-4">
+                  <svg className="size-4 text-[#b42318] shrink-0 mt-0.5" fill="none" viewBox="0 0 16 16">
+                    <path d="M8 5v4M8 11h.01M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  <p className="text-[13px] text-[#b42318]">{compareError}</p>
+                </div>
+              )}
+
+              {/* Results */}
+              {compareResult && !compareLoading && (
+                <div className="flex flex-col gap-5">
+                  {/* Comparative summary */}
+                  {(() => {
+                    const summary = String(
+                      compareResult.comparativeSummary ??
+                      compareResult.comparative_summary ??
+                      compareResult.summary ??
+                      compareResult.comparison ??
+                      ''
+                    ).trim();
+                    if (!summary) return null;
+                    return (
+                      <div>
+                        <p className="text-[11px] text-[#667085] uppercase tracking-wider mb-2">Comparative Summary</p>
+                        <div className="flex flex-col gap-2">
+                          {summary.split(/\n\n+/).filter(Boolean).map((para, i) => (
+                            <p key={i} className="text-[13px] text-[#475467] leading-[22px]">{para}</p>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Key differences */}
+                  {(() => {
+                    const diffs = compareResult.keyDifferences ?? compareResult.key_differences ?? compareResult.differences;
+                    if (!Array.isArray(diffs) || diffs.length === 0) return null;
+                    return (
+                      <div>
+                        <p className="text-[11px] text-[#667085] uppercase tracking-wider mb-2">Key Differences</p>
+                        <div className="flex flex-col gap-2">
+                          {(diffs as unknown[]).map((d, i) => (
+                            <div key={i} className="border border-[#eaecf0] rounded-[8px] px-3 py-2.5 text-[13px] text-[#475467] leading-[22px]">
+                              {typeof d === 'string' ? d : String((d as Record<string, unknown>).description ?? (d as Record<string, unknown>).text ?? JSON.stringify(d))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Individual documents */}
+                  <div>
+                    <p className="text-[11px] text-[#667085] uppercase tracking-wider mb-2">Documents Compared</p>
+                    <div className="flex flex-col gap-2">
+                      {documents
+                        .filter(d => selectedIds.has(d.id))
+                        .map(doc => (
+                          <div key={doc.id} className="border border-[#eaecf0] rounded-[8px] p-3 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <svg className="size-4 shrink-0 text-[#667085]" fill="none" viewBox="0 0 20 20">
+                                <path d="M11.667 1.667H5A1.667 1.667 0 0 0 3.333 3.333v13.334A1.667 1.667 0 0 0 5 18.333h10A1.667 1.667 0 0 0 16.667 16.667V6.667L11.667 1.667Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M11.667 1.667v5h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                              <div className="min-w-0">
+                                <p className="text-[13px] text-black font-['Figtree:Medium',sans-serif] truncate">{doc.title}</p>
+                                <p className="text-[11px] text-[#667085]">{doc.type} · {doc.uploadDate}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => { setShowComparePanel(false); setCompareIsFullWidth(false); openDocPanel(doc); }}
+                              className="shrink-0 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
