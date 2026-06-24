@@ -38,7 +38,7 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [isFullWidth, setIsFullWidth] = useState(false);
-  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'metrics' | 'discrepancies' | 'issues'>('summary');
+  const [activeDocTab, setActiveDocTab] = useState<'summary' | 'metrics' | 'discrepancies'>('summary');
 
   // Full document data fetched on panel open
   const [fullDocData, setFullDocData] = useState<Record<string, unknown> | null>(null);
@@ -342,7 +342,7 @@ export default function Documents() {
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
             Documents
           </h1>
-          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">
+          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-[#475467]">
             Upload, analyze and compare documents related to Omatek's financial status.
           </p>
         </div>
@@ -485,8 +485,8 @@ export default function Documents() {
               const someSelected = filtered.some(d => selectedIds.has(d.id));
 
               return (
-                <div className="border border-[#eaecf0] rounded-lg overflow-hidden">
-                  <table className="w-full">
+                <div className="border border-[#eaecf0] rounded-lg overflow-x-auto">
+                  <table className="w-full min-w-[960px]">
                     <thead className="bg-gray-50">
                       <tr>
                         {/* Select-all checkbox */}
@@ -499,10 +499,10 @@ export default function Documents() {
                             className="size-4 rounded border-[#d0d5dd] text-[#144430] cursor-pointer"
                           />
                         </th>
-                        {["Title", "Type", "Upload Date", "Uploaded By", "Status", "Approval Date", "AI Confidence in Extraction"].map(h => (
-                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                        {["Title", "Type", "Upload Date", "Uploaded By", "Status", "Approval Date", "AI Confidence"].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
-                        <th className="px-4 py-3" />
+                        <th className="px-4 py-3 sticky right-0 bg-gray-50" />
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -577,24 +577,33 @@ export default function Documents() {
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-4 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
+                            <td
+                              className={`px-4 py-4 whitespace-nowrap text-right sticky right-0 ${
+                                isSelected || selectedDocument?.id === doc.id ? "bg-gray-100" : "bg-white"
+                              }`}
+                              onClick={e => e.stopPropagation()}
+                            >
                               <div className="flex justify-end gap-2">
-                                <button
-                                  onClick={() => openDocument(doc.id)}
-                                  disabled={isProcessing}
-                                  className="flex items-center gap-1.5 h-[32px] px-3 border border-[#d0d5dd] rounded-lg text-[12px] text-[#344054] hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                  <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                  Open
-                                </button>
-                                <button
-                                  onClick={() => setConfirmDelete(doc.id)}
-                                  disabled={isProcessing}
-                                  className="flex items-center gap-1.5 h-[32px] px-3 border border-[#fecdca] rounded-lg text-[12px] text-[#b42318] hover:bg-[#fef3f2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                  <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M2.5 5H17.5M15.8333 5L15 16.6667C15 17.1269 14.8127 17.5681 14.4794 17.8933C14.1461 18.2185 13.6938 18.4007 13.2222 18.4007H6.77778C6.30618 18.4007 5.85395 18.2185 5.52063 17.8933C5.1873 17.5681 5 17.1269 5 16.6667L4.16667 5M7.5 5V3.33333C7.5 3.11232 7.5878 2.90036 7.74408 2.74408C7.90036 2.5878 8.11232 2.5 8.33333 2.5H11.6667C11.8877 2.5 12.0996 2.5878 12.2559 2.74408C12.4122 2.90036 12.5 3.11232 12.5 3.33333V5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                  Delete
-                                </button>
+                                <Tooltip label="Download document" position="top">
+                                  <button
+                                    onClick={() => openDocument(doc.id)}
+                                    disabled={isProcessing}
+                                    aria-label="Download document"
+                                    className="flex items-center justify-center size-[32px] border border-[#d0d5dd] rounded-lg text-[#344054] hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M10 2.5V12.5M10 12.5L14.1667 8.33333M10 12.5L5.83333 8.33333M3.33333 14.1667V15.8333C3.33333 16.7538 4.07952 17.5 5 17.5H15C15.9205 17.5 16.6667 16.7538 16.6667 15.8333V14.1667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </button>
+                                </Tooltip>
+                                <Tooltip label="Delete document" position="top">
+                                  <button
+                                    onClick={() => setConfirmDelete(doc.id)}
+                                    disabled={isProcessing}
+                                    aria-label="Delete document"
+                                    className="flex items-center justify-center size-[32px] border border-[#fecdca] rounded-lg text-[#b42318] hover:bg-[#fef3f2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <svg className="size-3.5" fill="none" viewBox="0 0 20 20"><path d="M2.5 5H17.5M15.8333 5L15 16.6667C15 17.1269 14.8127 17.5681 14.4794 17.8933C14.1461 18.2185 13.6938 18.4007 13.2222 18.4007H6.77778C6.30618 18.4007 5.85395 18.2185 5.52063 17.8933C5.1873 17.5681 5 17.1269 5 16.6667L4.16667 5M7.5 5V3.33333C7.5 3.11232 7.5878 2.90036 7.74408 2.74408C7.90036 2.5878 8.11232 2.5 8.33333 2.5H11.6667C11.8877 2.5 12.0996 2.5878 12.2559 2.74408C12.4122 2.90036 12.5 3.11232 12.5 3.33333V5" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </button>
+                                </Tooltip>
                               </div>
                             </td>
                           </tr>
@@ -692,16 +701,11 @@ export default function Documents() {
                         {selectedDocument.type}
                       </span>
                     )}
-                    <button
-                      onClick={() => openDocument(selectedDocument.id)}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[12px] bg-white text-[#344054] border border-[#d0d5dd] hover:bg-[#f9fafb] transition-colors"
-                    >
-                      <svg className="size-3 shrink-0" fill="none" viewBox="0 0 20 20">
-                        <path d="M10.8333 2.5H17.5M17.5 2.5V9.16667M17.5 2.5L9.16667 10.8333M8.33333 4.16667H4.16667C3.24619 4.16667 2.5 4.91286 2.5 5.83333V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H14.1667C15.0871 17.5 15.8333 16.7538 15.8333 15.8333V11.6667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      Open Document
-                    </button>
-                    {selectedDocument.aiConfidence !== "—" && (() => {
+                    {selectedDocument.aiConfidence === "—" ? (
+                      <span className="inline-block px-2 py-1 rounded-full text-[12px] bg-[#f2f4f7] text-[#667085]">
+                        AI Confidence: N/A
+                      </span>
+                    ) : (() => {
                       const p = getConfidencePill(selectedDocument.aiConfidence);
                       return (
                         <span className={`inline-block px-2 py-1 rounded-full text-[12px] ${p.classes}`}>
@@ -709,6 +713,15 @@ export default function Documents() {
                         </span>
                       );
                     })()}
+                    <button
+                      onClick={() => openDocument(selectedDocument.id)}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[12px] bg-white text-[#344054] border border-[#d0d5dd] hover:bg-[#f9fafb] transition-colors"
+                    >
+                      <svg className="size-3 shrink-0" fill="none" viewBox="0 0 20 20">
+                        <path d="M10 2.5V12.5M10 12.5L14.1667 8.33333M10 12.5L5.83333 8.33333M3.33333 14.1667V15.8333C3.33333 16.7538 4.07952 17.5 5 17.5H15C15.9205 17.5 16.6667 16.7538 16.6667 15.8333V14.1667" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Download Document
+                    </button>
                   </div>
                 </div>
 
@@ -719,10 +732,10 @@ export default function Documents() {
                       onClick={() => setActiveDocTab('summary')}
                       className={`flex items-center gap-1.5 text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === 'summary' ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
                     >
+                      AI Summary
                       <svg className="size-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 0 C8.3 2.8 9.5 6.5 16 8 C9.5 9.5 8.3 13.2 8 16 C7.7 13.2 6.5 9.5 0 8 C6.5 6.5 7.7 2.8 8 0Z"/>
                       </svg>
-                      AI Summary
                     </button>
                     <button
                       onClick={() => setActiveDocTab('metrics')}
@@ -733,12 +746,6 @@ export default function Documents() {
                     <button
                       onClick={() => setActiveDocTab('discrepancies')}
                       className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === 'discrepancies' ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
-                    >
-                      Discrepancies
-                    </button>
-                    <button
-                      onClick={() => setActiveDocTab('issues')}
-                      className={`text-[13px] px-3 py-2 font-['Figtree:Medium',sans-serif] ${activeDocTab === 'issues' ? 'border-b-2 border-black font-semibold text-black' : 'text-[#667085]'}`}
                     >
                       Issues
                     </button>
@@ -937,69 +944,6 @@ export default function Documents() {
                   </div>
                 )}
 
-                {/* Issues tab */}
-                {activeDocTab === 'issues' && !docLoading && (
-                  <div className="flex flex-col gap-3">
-                    {(() => {
-                      const raw =
-                        fullDocData?.issues ??
-                        fullDocData?.concerns ??
-                        fullDocData?.risks ??
-                        fullDocData?.riskFactors ??
-                        fullDocData?.risk_factors ??
-                        fullDocData?.businessRisks ??
-                        fullDocData?.business_risks ??
-                        fullDocData?.alerts;
-                      const items: Record<string, unknown>[] = Array.isArray(raw)
-                        ? (raw as Record<string, unknown>[])
-                        : [];
-
-                      if (items.length === 0) return (
-                        <p className="text-[13px] text-[#667085] italic">No issues identified for this document.</p>
-                      );
-
-                      const severityStyles: Record<string, string> = {
-                        high:     'bg-[#fff1f2] text-[#e11d48]',
-                        critical: 'bg-[#fff1f2] text-[#e11d48]',
-                        medium:   'bg-[#fffbeb] text-[#d97706]',
-                        warning:  'bg-[#fffbeb] text-[#d97706]',
-                        low:      'bg-[#f8fafc] text-[#64748b]',
-                        info:     'bg-[#eff6ff] text-[#3b82f6]',
-                      };
-
-                      const fmtKey = (k: string) =>
-                        k.replace(/([a-z])([A-Z])/g, '$1 $2')
-                         .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-                         .replace(/_/g, ' ')
-                         .replace(/\b\w/g, c => c.toUpperCase())
-                         .trim();
-
-                      return items.map((item, i) => {
-                        const title = String(item.type ?? item.title ?? item.name ?? item.category ?? `Issue ${i + 1}`);
-                        const description = String(item.description ?? item.detail ?? item.message ?? item.recommendation ?? '');
-                        const severity = String(item.severity ?? item.level ?? item.priority ?? item.impact ?? 'low').toLowerCase();
-
-                        const sStyle = severityStyles[severity] ?? severityStyles.low;
-
-                        return (
-                          <div key={i} className="border border-[#eaecf0] rounded-[8px] p-3">
-                            <div className="flex justify-between items-start mb-1.5">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[11px] text-[#667085] uppercase tracking-wider">{fmtKey(title)}</span>
-                                <span className={`text-[12px] px-3 py-1 rounded-full font-medium ${sStyle}`}>
-                                  {severity.charAt(0).toUpperCase() + severity.slice(1)}
-                                </span>
-                              </div>
-                            </div>
-                            {description && (
-                              <div className="text-[13px] text-[#475467] leading-[22px]">{description}</div>
-                            )}
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                )}
               </div>
 
               {/* Footer — hidden for approved documents */}
@@ -1160,12 +1104,12 @@ export default function Documents() {
               {/* Title */}
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-1">
-                  <svg className="size-4 shrink-0" viewBox="0 0 16 16" fill="#144430">
-                    <path d="M8 0 C8.3 2.8 9.5 6.5 16 8 C9.5 9.5 8.3 13.2 8 16 C7.7 13.2 6.5 9.5 0 8 C6.5 6.5 7.7 2.8 8 0Z"/>
-                  </svg>
                   <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black">
                     Document Comparison
                   </h2>
+                  <svg className="size-4 shrink-0" viewBox="0 0 16 16" fill="#144430">
+                    <path d="M8 0 C8.3 2.8 9.5 6.5 16 8 C9.5 9.5 8.3 13.2 8 16 C7.7 13.2 6.5 9.5 0 8 C6.5 6.5 7.7 2.8 8 0Z"/>
+                  </svg>
                 </div>
                 <p className="text-[13px] text-[#667085]">
                   {selectedIds.size} document{selectedIds.size !== 1 ? 's' : ''} selected
@@ -1217,10 +1161,10 @@ export default function Documents() {
                     if (!insight) return (
                       <div className="bg-[#f9fafb] border border-[#eaecf0] rounded-[10px] p-4">
                         <div className="flex items-center gap-2 mb-2">
+                          <p className="text-[11px] font-semibold text-[#144430] uppercase tracking-wider">AI Insights</p>
                           <svg className="size-3.5 shrink-0" viewBox="0 0 14 14" fill="#144430">
                             <path d="M7 0 C7.2 2.4 8.1 5.3 13 7 C8.1 8.7 7.2 11.6 7 14 C6.8 11.6 5.9 8.7 1 7 C5.9 5.3 6.8 2.4 7 0Z"/>
                           </svg>
-                          <p className="text-[11px] font-semibold text-[#144430] uppercase tracking-wider">AI Insights</p>
                         </div>
                         <p className="text-[13px] text-[#667085] italic">No comparative insights were returned for these documents.</p>
                       </div>
@@ -1228,10 +1172,10 @@ export default function Documents() {
                     return (
                       <div className="bg-[#f0f7f4] border border-[#a9d4be] rounded-[10px] p-4">
                         <div className="flex items-center gap-2 mb-3">
+                          <p className="text-[11px] font-semibold text-[#144430] uppercase tracking-wider">AI Insights</p>
                           <svg className="size-3.5 shrink-0" viewBox="0 0 14 14" fill="#144430">
                             <path d="M7 0 C7.2 2.4 8.1 5.3 13 7 C8.1 8.7 7.2 11.6 7 14 C6.8 11.6 5.9 8.7 1 7 C5.9 5.3 6.8 2.4 7 0Z"/>
                           </svg>
-                          <p className="text-[11px] font-semibold text-[#144430] uppercase tracking-wider">AI Insights</p>
                         </div>
                         <div className="flex flex-col gap-2">
                           {insight.split(/\n\n+/).filter(Boolean).map((para, i) => (

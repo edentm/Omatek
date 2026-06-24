@@ -30,6 +30,7 @@ export default function ChatBotWidget() {
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [docOptions, setDocOptions] = useState<DocOption[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
+  const [docSearch, setDocSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const optionsRef = useRef<HTMLDivElement>(null);
@@ -76,6 +77,7 @@ export default function ChatBotWidget() {
     const handler = (e: MouseEvent) => {
       if (docPickerRef.current && !docPickerRef.current.contains(e.target as Node)) {
         setShowDocPicker(false);
+        setDocSearch("");
       }
     };
     document.addEventListener("mousedown", handler);
@@ -83,7 +85,7 @@ export default function ChatBotWidget() {
   }, [showDocPicker]);
 
   const openDocPicker = async () => {
-    if (showDocPicker) { setShowDocPicker(false); return; }
+    if (showDocPicker) { setShowDocPicker(false); setDocSearch(""); return; }
     if (docOptions.length === 0) {
       try {
         const data = await getDocuments({ limit: 100 }) as Record<string, unknown>[];
@@ -498,6 +500,26 @@ export default function ChatBotWidget() {
 
                   {showDocPicker && (
                     <div className="absolute bottom-full mb-2 left-0 z-50 bg-white border border-[#d0d5dd] rounded-[12px] shadow-xl w-[300px] overflow-hidden">
+                      {/* Search input */}
+                      <div className="px-3 pt-3 pb-2">
+                        <div className="flex items-center gap-2 bg-[#f2f4f7] rounded-[8px] px-2.5 py-1.5">
+                          <svg className="size-3.5 text-[#98a2b3] shrink-0" fill="none" viewBox="0 0 16 16">
+                            <path d="M14 14l-3.5-3.5M10.5 6.5a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <input
+                            autoFocus
+                            value={docSearch}
+                            onChange={e => setDocSearch(e.target.value)}
+                            placeholder="Search documents…"
+                            className="flex-1 bg-transparent text-[12px] text-[#344054] placeholder:text-[#98a2b3] focus:outline-none"
+                          />
+                          {docSearch && (
+                            <button onClick={() => setDocSearch("")} className="text-[#98a2b3] hover:text-[#344054]">
+                              <svg className="size-3" fill="none" viewBox="0 0 12 12"><path d="M9 3 3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                       <div className="border-b border-[#eaecf0]">
                         <button onClick={toggleAllDocs} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left">
                           <div className={`size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${allDocsSelected ? "bg-[#144430] border-[#144430]" : selectedDocIds.length > 0 ? "border-[#144430]" : "border-[#d0d5dd]"}`}>
@@ -509,24 +531,26 @@ export default function ChatBotWidget() {
                         </button>
                       </div>
                       <div className="max-h-[240px] overflow-y-auto py-1">
-                        {docOptions.length === 0 && (
-                          <p className="text-[12px] text-[#98a2b3] px-4 py-3">No documents found.</p>
-                        )}
-                        {docOptions.map(doc => {
-                          const checked = selectedDocIds.includes(doc.id);
-                          return (
-                            <button key={doc.id} onClick={() => toggleDoc(doc.id)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left">
-                              <div className={`size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[#144430] border-[#144430]" : "border-[#d0d5dd]"}`}>
-                                {checked && <svg className="size-2.5" viewBox="0 0 10 10" fill="none"><path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                              </div>
-                              <span className="text-[13px] text-[#344054] truncate flex-1">{doc.title}</span>
-                            </button>
-                          );
-                        })}
+                        {(() => {
+                          const filtered = docOptions.filter(d => d.title.toLowerCase().includes(docSearch.toLowerCase()));
+                          if (docOptions.length === 0) return <p className="text-[12px] text-[#98a2b3] px-4 py-3">No documents found.</p>;
+                          if (filtered.length === 0) return <p className="text-[12px] text-[#98a2b3] px-4 py-3">No matches for "{docSearch}".</p>;
+                          return filtered.map(doc => {
+                            const checked = selectedDocIds.includes(doc.id);
+                            return (
+                              <button key={doc.id} onClick={() => toggleDoc(doc.id)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left">
+                                <div className={`size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[#144430] border-[#144430]" : "border-[#d0d5dd]"}`}>
+                                  {checked && <svg className="size-2.5" viewBox="0 0 10 10" fill="none"><path d="M8 2L4 8L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                                </div>
+                                <span className="text-[13px] text-[#344054] truncate flex-1">{doc.title}</span>
+                              </button>
+                            );
+                          });
+                        })()}
                       </div>
                       <div className="border-t border-[#eaecf0] px-4 py-2.5 flex justify-between items-center bg-gray-50">
                         <span className="text-[12px] text-[#667085]">{selectedDocIds.length === 0 ? "No documents selected" : `${selectedDocIds.length} selected`}</span>
-                        <button onClick={() => setShowDocPicker(false)} className="text-[12px] font-semibold text-[#144430] hover:underline">Done</button>
+                        <button onClick={() => { setShowDocPicker(false); setDocSearch(""); }} className="text-[12px] font-semibold text-[#144430] hover:underline">Done</button>
                       </div>
                     </div>
                   )}

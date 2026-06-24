@@ -271,7 +271,7 @@ export default function Reports() {
           <h1 className="font-['Figtree:Medium',sans-serif] font-medium leading-[48px] text-[32px] text-black">
             Reports
           </h1>
-          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-black">
+          <p className="font-['Figtree:Regular',sans-serif] font-normal leading-[22.5px] text-[15px] text-[#475467]">
             Generate reports from uploaded documents and cater their focus
           </p>
         </div>
