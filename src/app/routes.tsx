@@ -10,16 +10,19 @@ import AuditLog from "./pages/AuditLog";
 import DashboardLayout from "./components/DashboardLayout";
 import { DocumentProvider } from "../contexts/DocumentContext";
 import { TokenLedgerProvider } from "../contexts/TokenLedgerContext";
+import { CurrencyProvider } from "../contexts/CurrencyContext";
 
 function ProtectedRoute() {
   const token = localStorage.getItem("token");
   if (!token) return <Navigate to="/login" replace />;
   return (
-    <TokenLedgerProvider>
-      <DocumentProvider>
-        <DashboardLayout />
-      </DocumentProvider>
-    </TokenLedgerProvider>
+    <CurrencyProvider>
+      <TokenLedgerProvider>
+        <DocumentProvider>
+          <DashboardLayout />
+        </DocumentProvider>
+      </TokenLedgerProvider>
+    </CurrencyProvider>
   );
 }
 

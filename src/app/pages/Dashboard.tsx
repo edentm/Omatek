@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { getDashboardMetrics, getStockData } from "../../api";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { CurrencyDropdown } from "../components/CurrencyDropdown";
 
 type PlatformMetrics = {
   totalDocuments?: number
@@ -8,13 +10,6 @@ type PlatformMetrics = {
   totalAnomaliesDetected?: number
 }
 
-const fmt = (val?: number | null) => {
-  if (val == null) return "—"
-  if (val >= 1_000_000_000) return `₦${(val / 1_000_000_000).toFixed(2)}B`
-  if (val >= 1_000_000) return `₦${(val / 1_000_000).toFixed(1)}M`
-  if (val >= 1_000) return `₦${(val / 1_000).toFixed(0)}K`
-  return `₦${val}`
-}
 
 const TIME_PERIODS = [
   { label: "All Time", value: "current" },
@@ -96,6 +91,7 @@ export default function Dashboard() {
       })
     : null
 
+  const { fmtNGN } = useCurrency()
   const selectedPeriod = TIME_PERIODS.find(p => p.value === timePeriod) ?? TIME_PERIODS[0]
 
   return (
@@ -112,8 +108,10 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Time period selector */}
-        <div className="relative shrink-0" ref={periodDropdownRef}>
+        {/* Currency + Time period selectors */}
+        <div className="flex items-center gap-2 shrink-0">
+        <CurrencyDropdown />
+        <div className="relative" ref={periodDropdownRef}>
           <button
             onClick={() => setPeriodDropdownOpen(o => !o)}
             className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors min-w-[160px]"
@@ -150,6 +148,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -158,14 +157,14 @@ export default function Dashboard() {
         {/* Revenue */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
           <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Revenue</p>
-          <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">₦4.2B</p>
+          <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{fmtNGN(4_200_000_000)}</p>
           <span className="text-[12px] text-[#667085]">All finalized reports</span>
         </div>
 
         {/* Expenses */}
         <div className="bg-white border border-[#d0d5dd] rounded-[10px] p-5 flex flex-col gap-3">
           <p className="font-['Figtree:Regular',sans-serif] text-[13px] text-[#667085]">Expenses</p>
-          <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">₦3.1B</p>
+          <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{fmtNGN(3_100_000_000)}</p>
           <span className="text-[12px] text-[#667085]">All finalized reports</span>
         </div>
 
@@ -177,7 +176,7 @@ export default function Dashboard() {
           ) : stockData.sharePrice != null ? (
             <>
               <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">
-                ₦{stockData.sharePrice.toFixed(2)}
+                {fmtNGN(stockData.sharePrice)}
               </p>
               {stockData.changePercent != null && (
                 <div className="flex items-center gap-1">
@@ -208,7 +207,7 @@ export default function Dashboard() {
             </>
           ) : (
             <>
-              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">₦2.47</p>
+              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{fmtNGN(2.47)}</p>
               <div className="flex items-center gap-1">
                 <svg className="size-3.5 shrink-0 text-[#027a48]" viewBox="0 0 14 14" fill="none">
                   <path d="M7 11V3M7 3L3 7M7 3L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -228,7 +227,7 @@ export default function Dashboard() {
           ) : stockData.marketCap != null ? (
             <>
               <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">
-                {fmt(stockData.marketCap)}
+                {fmtNGN(stockData.marketCap!)}
               </p>
               {stockData.rank != null && (
                 <span className="text-[12px] text-[#667085]">Rank #{stockData.rank} on NGX</span>
@@ -246,7 +245,7 @@ export default function Dashboard() {
             </>
           ) : (
             <>
-              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">₦6.94B</p>
+              <p className="font-['Figtree:Medium',sans-serif] font-medium text-[24px] text-black leading-tight">{fmtNGN(6_940_000_000)}</p>
               <span className="text-[12px] text-[#667085]">Rank #125 on NGX</span>
               <span className="text-[11px] text-[#98a2b3]">Stock Analysis</span>
             </>

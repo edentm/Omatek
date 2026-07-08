@@ -1,6 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useChatPanel } from "../../contexts/ChatPanelContext";
 import { Tooltip } from "../components/Tooltip";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { CurrencyDropdown } from "../components/CurrencyDropdown";
+
+function convertValue(s: string, fmtNGN: (n: number) => string): string {
+  if (!s.startsWith("₦")) return s
+  const rest = s.slice(1)
+  let raw: number
+  if (rest.endsWith("B"))      raw = parseFloat(rest) * 1e9
+  else if (rest.endsWith("M")) raw = parseFloat(rest) * 1e6
+  else if (rest.endsWith("K")) raw = parseFloat(rest) * 1e3
+  else                         raw = parseFloat(rest)
+  return isNaN(raw) ? s : fmtNGN(raw)
+}
 
 const TIME_PERIODS = [
   { label: "All Time", value: "all" },
@@ -266,6 +279,7 @@ function ConfidencePill({ score }: { score: number }) {
 
 // ── Metric Card ───────────────────────────────────────────────────────────────
 function MetricCardTile({ metric, selected, onClick }: { metric: MetricCard; selected: boolean; onClick: () => void }) {
+  const { fmtNGN } = useCurrency()
   return (
     <button
       onClick={onClick}
@@ -282,7 +296,7 @@ function MetricCardTile({ metric, selected, onClick }: { metric: MetricCard; sel
           {metric.change}
         </span>
       </div>
-      <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight mb-3">{metric.value}</p>
+      <p className="font-['Figtree:Medium',sans-serif] font-medium text-[28px] text-black leading-tight mb-3">{convertValue(metric.value, fmtNGN)}</p>
       {metric.isMarketData ? (
         <div className="flex items-center gap-1.5">
           <svg className="size-3.5 text-[#1a56db] shrink-0" fill="none" viewBox="0 0 16 16">
@@ -318,6 +332,7 @@ function MetricSidePanel({
   onClose: () => void
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "sources" | "trend">("overview")
+  const { fmtNGN } = useCurrency()
 
   return (
     <div
@@ -371,7 +386,7 @@ function MetricSidePanel({
         <div className="mb-5">
           <p className="text-[13px] text-[#667085] mb-1">{metric.label}</p>
           <div className="flex items-end gap-3 mb-2">
-            <p className="font-['Figtree:Medium',sans-serif] font-medium text-[40px] text-black leading-none">{metric.value}</p>
+            <p className="font-['Figtree:Medium',sans-serif] font-medium text-[40px] text-black leading-none">{convertValue(metric.value, fmtNGN)}</p>
             <span className={`mb-1 inline-flex items-center gap-1 text-[13px] font-medium px-2.5 py-1 rounded-full ${metric.positive ? "bg-[#ecfdf3] text-[#027a48]" : "bg-[#fef3f2] text-[#b42318]"}`}>
               {metric.positive ? (
                 <svg className="size-3.5" fill="none" viewBox="0 0 12 12"><path d="M6 9V3M3 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -506,7 +521,7 @@ function MetricSidePanel({
                 {metric.trend.map((row, i) => (
                   <tr key={i} className="border-b border-[#f2f4f7] last:border-0">
                     <td className="py-3 text-[13px] text-[#344054]">{row.period}</td>
-                    <td className="py-3 text-[13px] font-medium text-black text-right">{row.value}</td>
+                    <td className="py-3 text-[13px] font-medium text-black text-right">{convertValue(row.value, fmtNGN)}</td>
                     <td className="py-3 text-right">
                       {row.change && row.change !== "—" ? (
                         <span className={`text-[12px] font-medium ${row.positive ? "text-[#027a48]" : "text-[#b42318]"}`}>
@@ -578,8 +593,10 @@ export default function AIAnalysis() {
             </p>
           </div>
 
-          {/* Time period selector */}
-          <div className="relative shrink-0" ref={periodDropdownRef}>
+          {/* Currency + Time period selectors */}
+          <div className="flex items-center gap-2 shrink-0">
+          <CurrencyDropdown />
+          <div className="relative" ref={periodDropdownRef}>
             <button
               onClick={() => setPeriodDropdownOpen(o => !o)}
               className="bg-white border-[#d0d5dd] border-[0.8px] border-solid h-[43px] rounded-[10px] px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors min-w-[160px]"
@@ -615,6 +632,7 @@ export default function AIAnalysis() {
                 })}
               </div>
             )}
+          </div>
           </div>
         </div>
 
