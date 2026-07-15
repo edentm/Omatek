@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useChatPanel } from "../../contexts/ChatPanelContext";
 import FilterButton from "../components/FilterButton";
 import { Tooltip } from "../components/Tooltip";
-import { getDocuments, getReports, getReport, uploadDocument, openDocument, pollJobStatus, deleteDocument, editDocumentData, approveDocument, multiAnalyze } from "../../api";
+import { getDocuments, getReports, getReport, uploadDocument, openDocument, pollJobStatus, deleteDocument, editDocumentData, approveDocument, unapproveDocument, multiAnalyze } from "../../api";
+import { useCurrency, CURRENCIES, type CurrencyCode } from "../../contexts/CurrencyContext";
 
 type Document = {
   id: number;
@@ -25,6 +26,17 @@ const getConfidencePill = (confidence: string) => {
   if (value >= 60) return { label: `${confidence} - Moderate`, classes: "bg-[#fef0c7] text-[#dc6803]" };
   return { label: `${confidence} - Low`, classes: "bg-[#fef3f2] text-[#b42318]" };
 };
+
+function convertPanelValue(s: string, fmt: (n: number) => string): string {
+  if (!s.startsWith("₦")) return s;
+  const rest = s.slice(1);
+  let raw: number;
+  if (rest.endsWith("B"))      raw = parseFloat(rest) * 1e9;
+  else if (rest.endsWith("M")) raw = parseFloat(rest) * 1e6;
+  else if (rest.endsWith("K")) raw = parseFloat(rest) * 1e3;
+  else                         raw = parseFloat(rest);
+  return isNaN(raw) ? s : fmt(raw);
+}
 
 export default function Documents() {
   const { chatOpen, setSidePanelOpen } = useChatPanel();
@@ -81,11 +93,29 @@ export default function Documents() {
   const [docToast, setDocToast] = useState("");
   const showDocToast = (msg: string) => { setDocToast(msg); setTimeout(() => setDocToast(""), 3000); };
 
+  // Panel currency selector
+  const { fmtNGNFor } = useCurrency();
+  const [panelCurrency, setPanelCurrency] = useState<CurrencyCode>("NGN");
+  const [panelCurrencyOpen, setPanelCurrencyOpen] = useState(false);
+  const panelCurrencyRef = useRef<HTMLDivElement>(null);
+  const panelFmtNGN = (v: number) => fmtNGNFor(v, panelCurrency);
+  const panelCurrencyInfo = CURRENCIES.find(c => c.code === panelCurrency) ?? CURRENCIES[0];
+
   useEffect(() => {
     const open = !!(selectedDocument && isPanelExpanded) || showComparePanel;
     setSidePanelOpen(open);
     return () => setSidePanelOpen(false);
   }, [selectedDocument, isPanelExpanded, showComparePanel, setSidePanelOpen]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (panelCurrencyRef.current && !panelCurrencyRef.current.contains(e.target as Node)) {
+        setPanelCurrencyOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => {
     getDocuments()
@@ -679,8 +709,8 @@ export default function Documents() {
                 </Tooltip>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-24" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {/* Non-scrollable header: title, tags, currency picker, tabs */}
+              <div className="shrink-0 px-6 pt-6">
                 {/* Title + meta */}
                 <div className="mb-4">
                   <h2 className="font-['Figtree:Medium',sans-serif] text-[20px] leading-[30px] text-black mb-2">
@@ -723,10 +753,48 @@ export default function Documents() {
                       Download Document
                     </button>
                   </div>
+
+                  {/* Panel currency selector — inline with tags */}
+                  <div className="w-full mt-3 flex items-center gap-2">
+                    <span className="text-[12px] text-[#52565c] shrink-0">Currency Displayed:</span>
+                    <div ref={panelCurrencyRef} className="relative inline-block">
+                    <button
+                      onClick={() => setPanelCurrencyOpen(o => !o)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-[#d0d5dd] bg-white text-[13px] text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                    >
+                      <span>{panelCurrencyInfo.flag}</span>
+                      <span className="font-medium">{panelCurrencyInfo.code}</span>
+                      <svg className={`size-3.5 text-[#667085] transition-transform ${panelCurrencyOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 20 20">
+                        <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    {panelCurrencyOpen && (
+                      <div className="absolute top-[calc(100%+4px)] left-0 z-50 min-w-[220px] bg-white border border-[#eaecf0] rounded-[10px] shadow-lg py-1 overflow-hidden">
+                        {CURRENCIES.map(c => (
+                          <button
+                            key={c.code}
+                            onClick={() => { setPanelCurrency(c.code); setPanelCurrencyOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-[#f9fafb] transition-colors"
+                          >
+                            <span className="text-base">{c.flag}</span>
+                            <span className={`flex-1 text-left ${panelCurrency === c.code ? 'font-semibold text-[#101828]' : 'text-[#344054]'}`}>
+                              {c.code} · {c.fullName}
+                            </span>
+                            {panelCurrency === c.code && (
+                              <svg className="size-4 text-[#144430] shrink-0" fill="none" viewBox="0 0 20 20">
+                                <path d="M16.6667 5L7.50004 14.1667L3.33337 10" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="border-b border-[#eaecf0] mb-4">
+                <div className="border-b border-[#eaecf0] mb-0">
                   <div className="flex gap-1">
                     <button
                       onClick={() => setActiveDocTab('summary')}
@@ -751,7 +819,10 @@ export default function Documents() {
                     </button>
                   </div>
                 </div>
+              </div>
 
+              {/* Scrollable tab content */}
+              <div className="flex-1 overflow-y-auto px-6 pt-4 pb-24" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {/* Loading */}
                 {docLoading && (
                   <div className="flex items-center gap-2 py-4">
@@ -848,6 +919,7 @@ export default function Documents() {
                         }
                         const wasEdited = docEditedFields.current.get(selectedDocument.id)?.has(key) ?? false;
                         const displayValue = isEditing ? (editedMetrics[key] ?? value) : value;
+                        const convertedValue = isEditing ? displayValue : convertPanelValue(displayValue, panelFmtNGN);
                         return (
                           <div key={key} className="border border-[#eaecf0] rounded-[8px] p-3">
                             <div className="flex justify-between items-start mb-1.5">
@@ -869,7 +941,7 @@ export default function Documents() {
                                 className="w-full px-2 py-1.5 border border-[#144430] rounded-[6px] text-[13px] text-[#475467] leading-[22px] focus:outline-none focus:ring-1 focus:ring-[#144430]"
                               />
                             ) : (
-                              <div className="text-[13px] text-[#475467] leading-[22px]">{displayValue}</div>
+                              <div className="text-[13px] text-[#475467] leading-[22px]">{convertedValue}</div>
                             )}
                           </div>
                         );
@@ -946,16 +1018,39 @@ export default function Documents() {
 
               </div>
 
-              {/* Footer — hidden for approved documents */}
-              {selectedDocument.status !== "Approved" && (
-                <div className="absolute bottom-0 left-0 right-0 px-6 py-3 bg-white border-t-2 border-[#eaecf0]">
-                  {finalizeError && (
-                    <div className="mb-3 px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] flex items-start gap-2">
-                      <svg className="size-4 text-[#b42318] shrink-0 mt-0.5" fill="none" viewBox="0 0 16 16"><path d="M8 5v4M8 11h.01M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                      <p className="text-[11px] text-[#b42318] flex-1">{finalizeError}</p>
-                      <button onClick={() => setFinalizeError(null)} className="text-[#b42318] shrink-0"><svg className="size-3" fill="none" viewBox="0 0 12 12"><path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg></button>
-                    </div>
-                  )}
+              {/* Footer */}
+              <div className="absolute bottom-0 left-0 right-0 px-6 py-3 bg-white border-t-2 border-[#eaecf0]">
+                {finalizeError && (
+                  <div className="mb-3 px-3 py-2 bg-[#fef3f2] border border-[#fca5a5] rounded-[8px] flex items-start gap-2">
+                    <svg className="size-4 text-[#b42318] shrink-0 mt-0.5" fill="none" viewBox="0 0 16 16"><path d="M8 5v4M8 11h.01M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                    <p className="text-[11px] text-[#b42318] flex-1">{finalizeError}</p>
+                    <button onClick={() => setFinalizeError(null)} className="text-[#b42318] shrink-0"><svg className="size-3" fill="none" viewBox="0 0 12 12"><path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg></button>
+                  </div>
+                )}
+                {selectedDocument.status === "Approved" ? (
+                  /* Unapprove button — shown when document is approved */
+                  <div className="flex justify-center">
+                    <button
+                      onClick={async () => {
+                        setFinalizeError(null);
+                        try {
+                          await unapproveDocument(selectedDocument.id);
+                          setDocuments(prev => prev.map(d => d.id === selectedDocument.id ? { ...d, status: 'Needs Review' as const, approvalDate: '—' } : d));
+                          setSelectedDocument(prev => prev ? { ...prev, status: 'Needs Review' as Document['status'], approvalDate: '—' } : prev);
+                        } catch (err) {
+                          setFinalizeError(err instanceof Error ? err.message : 'Failed to unapprove document. Please try again.');
+                        }
+                      }}
+                      className="h-10 px-4 w-[217px] border border-[#d0d5dd] rounded-[10px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
+                    >
+                      <svg className="size-4 text-[#667085]" viewBox="0 0 20 20" fill="none">
+                        <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-[#344054]">Unapprove</span>
+                    </button>
+                  </div>
+                ) : (
+                  /* Edit + Approve buttons — shown when document needs review */
                   <div className="flex gap-4 justify-center items-center">
                     {/* Edit / Save */}
                     <button
@@ -1037,6 +1132,7 @@ export default function Documents() {
                           await approveDocument(selectedDocument.id);
                           setDocuments(prev => prev.map(d => d.id === selectedDocument.id ? { ...d, status: 'Approved' as const } : d));
                           setSelectedDocument(prev => prev ? { ...prev, status: 'Approved' as Document['status'] } : prev);
+                          showDocToast("Document approved successfully.");
                         } catch (err) {
                           setFinalizeError(err instanceof Error ? err.message : 'Failed to approve document. Please try again.');
                         }
@@ -1049,8 +1145,8 @@ export default function Documents() {
                       <span className="font-['Figtree:Bold',sans-serif] text-[13px] text-white">Approve Document</span>
                     </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>

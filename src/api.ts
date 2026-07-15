@@ -183,6 +183,12 @@ export const approveDocument = async (id: number) => {
   return res.json()
 }
 
+export const unapproveDocument = async (id: number) => {
+  const res = await authFetch(`/api/documents/${id}/unfinalize`, { method: 'PUT' })
+  if (!res.ok) throw new Error('Failed to unapprove document')
+  return res.json()
+}
+
 // ── Analysis ─────────────────────────────────────────────────────────────────
 
 export const getAnalysisMetrics = async () => {

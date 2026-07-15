@@ -20,6 +20,7 @@ type CurrencyCtx = {
   currency: CurrencyCode
   setCurrency: (c: CurrencyCode) => void
   fmtNGN: (ngnValue: number) => string
+  fmtNGNFor: (ngnValue: number, targetCurrency: CurrencyCode) => string
   currencyInfo: typeof CURRENCIES[number]
 }
 
@@ -52,8 +53,23 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     return `${sym}${converted.toFixed(2)}`
   }
 
+  function fmtNGNFor(ngnValue: number, targetCurrency: CurrencyCode): string {
+    const info = CURRENCIES.find(c => c.code === targetCurrency) ?? CURRENCIES[0]
+    const rate = rates[targetCurrency.toLowerCase()] ?? 1
+    const converted = ngnValue * rate
+    const sym = info.symbol
+    const abs = Math.abs(converted)
+    if (abs >= 1e9)  return `${sym}${(converted / 1e9).toFixed(2)}B`
+    if (abs >= 1e6)  return `${sym}${(converted / 1e6).toFixed(1)}M`
+    if (abs >= 1e3)  return `${sym}${(converted / 1e3).toFixed(0)}K`
+    if (abs < 0.001) return `${sym}${converted.toFixed(5)}`
+    if (abs < 0.1)   return `${sym}${converted.toFixed(4)}`
+    if (abs < 10)    return `${sym}${converted.toFixed(3)}`
+    return `${sym}${converted.toFixed(2)}`
+  }
+
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, fmtNGN, currencyInfo }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, fmtNGN, fmtNGNFor, currencyInfo }}>
       {children}
     </CurrencyContext.Provider>
   )
